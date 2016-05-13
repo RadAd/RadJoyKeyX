@@ -142,6 +142,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	case WM_CONTEXTMENU:
 		{
+			SetFocus(hWnd);
 			HMENU hMenu = GetSubMenu(GetMenu(hWnd), 0);
 			//SetMenuDefaultItem(hMenu, IDM_SELECT, FALSE);
 			TrackPopupMenu(hMenu, 0, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), 0, hWnd, nullptr);
@@ -161,7 +162,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				RECT r = { };
 				Shell_NotifyIconGetRect(&nii, &r);
 
-				SetFocus(hWnd);
 				SendMessage(hWnd, WM_CONTEXTMENU, (WPARAM) hWnd, MAKELPARAM((r.right + r.left)/2, (r.bottom + r.top) / 2));
 			}
 			else

@@ -487,9 +487,7 @@ void AppendBattInfo(TCHAR* s, int length)
 		{
 		case BATTERY_TYPE_DISCONNECTED:
 			//_stprintf_s(str, _T("\n%d: disconnected"), (j + 1));
-			joyBattery.BatteryLevel = j;
-			_stprintf_s(str, _T("\n%d: batt: %.*s%.*s"), (j + 1), joyBattery.BatteryLevel, _T("###"), (BATTERY_LEVEL_FULL - joyBattery.BatteryLevel), _T("---"));
-			_tcscat_s(s, length, str);
+			//_tcscat_s(s, length, str);
 			break;
 		case BATTERY_TYPE_WIRED:
 			_stprintf_s(str, _T("\n%d: wired"), (j + 1));
