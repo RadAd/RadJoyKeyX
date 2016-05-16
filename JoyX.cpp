@@ -239,14 +239,15 @@ bool Update(QUERY_USER_NOTIFICATION_STATE& notifyStateOld)
 	return false;
 }
 
-void DoJoystick(JoyX& joyx)
+DWORD DoJoystick(JoyX& joyx)
 {
+    DWORD ret = 0;
 	//printf("time: %d %d\n", ticksleep, tick);
 	DWORD r;
 
-	bool bChanged = false;
-	bChanged = Update(joyx.wndInfoFG) || bChanged;
-	bChanged = Update(joyx.notifyState) || bChanged;
+	bool bWindowChanged = false;
+    bWindowChanged = Update(joyx.wndInfoFG) || bWindowChanged;
+    bWindowChanged = Update(joyx.notifyState) || bWindowChanged;
 
     // TODO Lookup a JoyMapping for the current hWnd
     const JoyMapping* wndJoyMapping = nullptr;
@@ -272,11 +273,11 @@ void DoJoystick(JoyX& joyx)
 			//DebugOut(_T("  Uses X Input: %s\n"), _(joyx.wndInfoFG.bUsesXinput));
 			//DebugOut(_T("  Notify State: %d\n"), joyx.notifyState);
 			joyx.bEnabled = bEnabled;
-			bChanged = true;
+            bWindowChanged = true;
 		}
 	}
 
-	if (bChanged)
+	if (bWindowChanged)
 	{
 		TCHAR* exe = _tcsrchr(joyx.wndInfoFG.strModule, _T('\\'));
 		exe = exe == nullptr ? joyx.wndInfoFG.strModule : exe + 1;
@@ -284,34 +285,15 @@ void DoJoystick(JoyX& joyx)
 		DebugOut(_T("%c %s %s\n"), (joyx.bEnabled ? '+' : '-'), exe, joyx.wndInfoFG.strWndText);
 	}
 
-	for (int j = 0; j < XUSER_MAX_COUNT; ++j)
+    for (int j = 0; j < XUSER_MAX_COUNT; ++j)
 	{
-#if 0
 		XINPUT_BATTERY_INFORMATION joyBattery = {};
 		r = XInputGetBatteryInformation(j, BATTERY_DEVTYPE_GAMEPAD, &joyBattery);
 		if (r == ERROR_SUCCESS && !Equal(joyBattery, joyx.joyBattery[j]))
 		{
-			TCHAR str[1024];
-			switch (joyBattery.BatteryType)
-			{
-			case BATTERY_TYPE_DISCONNECTED:
-				SetConsoleTitle(_T("JoyXTest batt: disconnected"));
-				break;
-			case BATTERY_TYPE_WIRED:
-				SetConsoleTitle(_T("JoyXTest batt: wired"));
-				break;
-			case BATTERY_TYPE_ALKALINE:
-			case BATTERY_TYPE_NIMH:
-				DebugOut(str, _T("JoyXTest batt: %d"), joyBattery.BatteryLevel);
-				SetConsoleTitle(str);
-				break;
-			default:
-				SetConsoleTitle(_T("JoyXTest batt: unknown"));
-				break;
-			}
-			joyx.joyBattery[j] = joyBattery;
+            joyx.joyBattery[j] = joyBattery;
+            ret |= J_BATTERY_CHANGED;
 		}
-#endif
 
 		XINPUT_CAPABILITIES joyCapabilities = {};
 		r = XInputGetCapabilities(j, XINPUT_FLAG_GAMEPAD, &joyCapabilities);
@@ -397,6 +379,7 @@ void DoJoystick(JoyX& joyx)
 
 			if (joyx.bEnabled)
 			{
+                // TODO JoyMapping need to define how left/right thumb sticks are mapped
 				POINTFLOAT pfLeft = Normalize(joyState.Gamepad.sThumbLX, joyState.Gamepad.sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 				if (SendMouse((LONG)((pfLeft.x * MOUSE_SPEED) + 0.5), (LONG)((pfLeft.y * -MOUSE_SPEED) + 0.5)))
 					joyx.joyLast = JML_MOUSE;
@@ -407,6 +390,8 @@ void DoJoystick(JoyX& joyx)
 			}
 		}
 	}
+
+    return ret;
 }
 
 void Init(JoyX& joyx)
@@ -475,15 +460,12 @@ void Init(JoyX& joyx)
 	joyx.XInputPowerOffController = reinterpret_cast<XInputPowerOffController_t>(GetProcAddress(hXInput, (LPCSTR)103));
 }
 
-void AppendBattInfo(TCHAR* s, int length)
+void AppendBattInfo(TCHAR* s, int length, const XINPUT_BATTERY_INFORMATION* joyBattery)
 {
 	for (int j = 0; j < XUSER_MAX_COUNT; ++j)
 	{
-		XINPUT_BATTERY_INFORMATION joyBattery = {};
-		DWORD r = XInputGetBatteryInformation(j, BATTERY_DEVTYPE_GAMEPAD, &joyBattery);
-
 		TCHAR str[1024];
-		switch (joyBattery.BatteryType)
+		switch (joyBattery[j].BatteryType)
 		{
 		case BATTERY_TYPE_DISCONNECTED:
 			//_stprintf_s(str, _T("\n%d: disconnected"), (j + 1));
@@ -495,7 +477,7 @@ void AppendBattInfo(TCHAR* s, int length)
 			break;
 		case BATTERY_TYPE_ALKALINE:
 		case BATTERY_TYPE_NIMH:
-			_stprintf_s(str, _T("\n%d: batt: %.*s%.*s"), (j + 1), joyBattery.BatteryLevel, _T("###"), (BATTERY_LEVEL_FULL - joyBattery.BatteryLevel), _T("---"));
+			_stprintf_s(str, _T("\n%d: batt: %.*s%.*s"), (j + 1), joyBattery[j].BatteryLevel, _T("###"), (BATTERY_LEVEL_FULL - joyBattery[j].BatteryLevel), _T("---"));
 			_tcscat_s(s, length, str);
 			break;
 		default:

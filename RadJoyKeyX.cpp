@@ -7,7 +7,6 @@
 #define WM_TRAY (WM_USER + 30)
 #define ID_TRAY 100
 #define TIMER_JOY 10
-#define TIMER_BATT 11
 
 // Global Variables:
 HINSTANCE g_hInst;                                // current instance
@@ -20,6 +19,19 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+void UpdateTrayMsg(HWND hWnd)
+{
+    NOTIFYICONDATA nid = { NOTIFYICONDATA_V2_SIZE };
+    nid.hWnd = hWnd;
+    nid.uID = ID_TRAY;
+    nid.uVersion = NOTIFYICON_VERSION;
+    GetWindowText(hWnd, nid.szTip, ARRAYSIZE(nid.szTip));
+    AppendBattInfo(nid.szTip, ARRAYSIZE(nid.szTip), g_JoyX.joyBattery);
+    nid.uFlags = NIF_TIP;
+
+    Shell_NotifyIcon(NIM_MODIFY, &nid);
+}
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -110,13 +122,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			nid.uCallbackMessage = WM_TRAY;
 			nid.hIcon = (HICON) GetClassLongPtr(hWnd, GCLP_HICONSM);
 			GetWindowText(hWnd, nid.szTip, ARRAYSIZE(nid.szTip));
-			AppendBattInfo(nid.szTip, ARRAYSIZE(nid.szTip));
+			AppendBattInfo(nid.szTip, ARRAYSIZE(nid.szTip), g_JoyX.joyBattery);
 			nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_SHOWTIP;
 
 			Shell_NotifyIcon(NIM_ADD, &nid);
 
 			SetTimer(hWnd, TIMER_JOY, 10, NULL);
-			SetTimer(hWnd, TIMER_BATT, 60 * 1000, NULL);
 		}
 		break;
 
@@ -194,22 +205,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case TIMER_JOY:
 			if (IsWindowEnabled(hWnd))
 			{
-				DoJoystick(g_JoyX);
+				DWORD ret = DoJoystick(g_JoyX);
+                if (ret & J_BATTERY_CHANGED)
+                    UpdateTrayMsg(hWnd);
 			}
-			break;
-
-		case TIMER_BATT:
-			{
-				NOTIFYICONDATA nid = { NOTIFYICONDATA_V2_SIZE };
-				nid.hWnd = hWnd;
-				nid.uID = ID_TRAY;
-				nid.uVersion = NOTIFYICON_VERSION;
-				GetWindowText(hWnd, nid.szTip, ARRAYSIZE(nid.szTip));
-				AppendBattInfo(nid.szTip, ARRAYSIZE(nid.szTip));
-				nid.uFlags = NIF_TIP;
-
-				Shell_NotifyIcon(NIM_MODIFY, &nid);
-		}
 			break;
 		}
 		break;
