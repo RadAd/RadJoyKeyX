@@ -239,6 +239,21 @@ bool Update(QUERY_USER_NOTIFICATION_STATE& notifyStateOld)
 	return false;
 }
 
+const JoyMapping& GetWndJoyMapping(const JoyX& joyx)
+{
+    for (int i = 0; i < joyx.joyMappingOtherCount; ++i)
+    {
+        const JoyMapping& thisJoyMapping = joyx.joyMappingOther[i];
+        if (thisJoyMapping.strModule[0] != _T('\0')
+            && IsWnd(joyx.wndInfoFG, thisJoyMapping.strModule, thisJoyMapping.strWndClass, thisJoyMapping.strWndText))
+        {
+            //DebugOut(_T("Module: %s\n"), thisJoyMapping.strModule);
+            return thisJoyMapping;
+        }
+    }
+    return joyx.joyMapping;
+}
+
 DWORD DoJoystick(JoyX& joyx)
 {
     DWORD ret = 0;
@@ -249,22 +264,10 @@ DWORD DoJoystick(JoyX& joyx)
     bWindowChanged = Update(joyx.wndInfoFG) || bWindowChanged;
     bWindowChanged = Update(joyx.notifyState) || bWindowChanged;
 
-    // TODO Lookup a JoyMapping for the current hWnd
-    const JoyMapping* wndJoyMapping = nullptr;
-	for (int i = 0; i < joyx.joyMappingOtherCount; ++i)
-	{
-		const JoyMapping& thisJoyMapping = joyx.joyMappingOther[i];
-		if (thisJoyMapping.strModule[0] != _T('\0')
-			&& IsWnd(joyx.wndInfoFG, thisJoyMapping.strModule, thisJoyMapping.strWndClass, thisJoyMapping.strWndText))
-		{
-			//DebugOut(_T("Module: %s\n"), thisJoyMapping.strModule);
-			wndJoyMapping = &thisJoyMapping;
-			break;
-		}
-	}
+    const JoyMapping& wndJoyMapping = GetWndJoyMapping(joyx);
     
 	{
-		bool bEnabled = !joyx.wndInfoFG.bUsesXinput || joyx.notifyState >= QUNS_ACCEPTS_NOTIFICATIONS || wndJoyMapping != nullptr;
+		bool bEnabled = !joyx.wndInfoFG.bUsesXinput || joyx.notifyState >= QUNS_ACCEPTS_NOTIFICATIONS || &wndJoyMapping != &joyx.joyMapping;
 		// TODO Enable if Steam
 		if (bEnabled != joyx.bEnabled)
 		{
@@ -331,8 +334,7 @@ DWORD DoJoystick(JoyX& joyx)
 #endif
 				for (int b = 0; b < XINPUT_MAX_BUTTONS; ++b)
 				{
-                    const JoyMapping& joyMapping = joyState.Gamepad.wButtons & joyx.altKey ? joyx.joyMappingAlt :
-                        wndJoyMapping != nullptr && wndJoyMapping->joyMappingButton[b].type != JMBT_NONE ? *wndJoyMapping : joyx.joyMapping;
+                    const JoyMapping& joyMapping = joyState.Gamepad.wButtons & joyx.altKey ? joyx.joyMappingAlt : wndJoyMapping;
 
 					const JoyMappingButton& joyMappingButton = joyMapping.joyMappingButton[b];
 					const WORD mask = 1 << b;
@@ -358,12 +360,14 @@ DWORD DoJoystick(JoyX& joyx)
 							case JMC_BUTTON:
 								if (joyx.joyLast == JML_MOUSE)
 								{
-									SendKey(VK_LBUTTON | KF_VKEY, true, joyx.keyDown);
+                                    if (joyx.bEnabled)
+									    SendKey(VK_LBUTTON | KF_VKEY, true, joyx.keyDown);
 									SendKey(VK_LBUTTON | KF_VKEY, false, joyx.keyDown);
 								}
 								else if (joyx.joyLast == JML_KEYBOARD)
 								{
-									SendKey(VK_RETURN | KF_VKEY, true, joyx.keyDown);
+                                    if (joyx.bEnabled)
+									    SendKey(VK_RETURN | KF_VKEY, true, joyx.keyDown);
 									SendKey(VK_RETURN | KF_VKEY, false, joyx.keyDown);
 								}
 								break;
@@ -421,6 +425,7 @@ void Init(JoyX& joyx)
     
 	{
 		JoyMapping& joyMappingMedia = joyx.joyMappingOther[joyx.joyMappingOtherCount++];
+        joyMappingMedia = joyx.joyMapping;
 		_tcscpy_s(joyMappingMedia.strModule, _T("*\\mpc-hc64.exe"));
 		_tcscpy_s(joyMappingMedia.strWndClass, _T("*"));
 		_tcscpy_s(joyMappingMedia.strWndText, _T("*"));
@@ -432,6 +437,7 @@ void Init(JoyX& joyx)
     
 	{
 		JoyMapping& joyMappingBrowser = joyx.joyMappingOther[joyx.joyMappingOtherCount++];
+        joyMappingBrowser = joyx.joyMapping;
 		_tcscpy_s(joyMappingBrowser.strModule, _T("*\\ApplicationFrameHost.exe"));
 		_tcscpy_s(joyMappingBrowser.strWndClass, _T("ApplicationFrameWindow"));
 		_tcscpy_s(joyMappingBrowser.strWndText, _T("*- Microsoft Edge"));
