@@ -83,20 +83,18 @@ void SendKey(WORD wScan, bool bDown, bool* keyDown)
 #if _DEBUG
 	if (bSend)
 	{
-		TCHAR str[1024];
 		switch (ip.type)
 		{
 		case INPUT_KEYBOARD:
-			DebugOut(str, _T("SendKey scan: %X vk: %X %s\n"), ip.ki.wScan, ip.ki.wVk, bDown ? _T("Down") : _T("Up"));
+			DebugOut(_T("SendKey scan: %X vk: %X %s\n"), ip.ki.wScan, ip.ki.wVk, bDown ? _T("Down") : _T("Up"));
 			break;
 		case INPUT_MOUSE:
-			DebugOut(str, _T("SendMouse flags: %X md: %X %s\n"), ip.mi.dwFlags, ip.mi.mouseData, bDown ? _T("Down") : _T("Up"));
+			DebugOut(_T("SendMouse flags: %X md: %X %s\n"), ip.mi.dwFlags, ip.mi.mouseData, bDown ? _T("Down") : _T("Up"));
 			break;
 		default:
-			DebugOut(str, _T("SendUnknown\n"));
+			DebugOut(_T("SendUnknown\n"));
 			break;
 		}
-		OutputDebugString(str);
 	}
 #endif
 
@@ -108,6 +106,7 @@ bool SendMouse(LONG dx, LONG dy)
 {
 	if (dx != 0 || dy != 0)
 	{
+        //DebugOut(_T("SendMouse x: %d y: %d\n"), dx, dy);
 		INPUT ip = { INPUT_MOUSE };
 		ip.mi.dx = dx;
 		ip.mi.dy = dy;
@@ -143,6 +142,32 @@ bool SendScroll(LONG dx, LONG dy)
 	}
 	else
 		return false;
+}
+
+inline SHORT GetThumbX(const XINPUT_STATE& state, JoyThumb t)
+{
+    switch (t)
+    {
+    case JMT_LEFT:
+        return state.Gamepad.sThumbLX;
+    case JMT_RIGHT:
+        return state.Gamepad.sThumbRX;
+    default:
+        return 0;
+    }
+}
+
+inline SHORT GetThumbY(const XINPUT_STATE& state, JoyThumb t)
+{
+    switch (t)
+    {
+    case JMT_LEFT:
+        return state.Gamepad.sThumbLY;
+    case JMT_RIGHT:
+        return state.Gamepad.sThumbRY;
+    default:
+        return 0;
+    }
 }
 
 inline bool IsOnButtonDown(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button)
@@ -202,13 +227,13 @@ bool Update(WndInfo& wndInfo)
 
 		r = GetModuleFileNameEx2(wndInfo.pid, wndInfo.strModule, ARRAYSIZE(wndInfo.strModule));
 		if (r == 0)
-			wndInfo.strModule[0] = _T('\0');
+            _tcscpy_s(wndInfo.strModule, L"[Unknown]");
 		r = GetClassName(hWndFG, wndInfo.strWndClass, ARRAYSIZE(wndInfo.strWndClass));
 		if (r == 0)
-			wndInfo.strWndClass[0] = _T('\0');
+            _tcscpy_s(wndInfo.strWndClass, L"");
 		r = GetWindowText(hWndFG, wndInfo.strWndText, ARRAYSIZE(wndInfo.strWndText));
 		if (r == 0)
-			wndInfo.strWndText[0] = _T('\0');
+            _tcscpy_s(wndInfo.strWndText, L"");
 		wndInfo.bUsesXinput = FindModule(wndInfo.pid, _T("*\\xinput*.dll")) != NULL;
 
 #if 0
@@ -223,6 +248,14 @@ bool Update(WndInfo& wndInfo)
 		wndInfo.hWndFG = hWndFG;
 		return true;
 	}
+    else if (hWndFG == NULL)
+    {
+        wndInfo.pid = 0;
+        _tcscpy_s(wndInfo.strModule, L"[Unknown]");
+        _tcscpy_s(wndInfo.strWndClass, L"");
+        _tcscpy_s(wndInfo.strWndText, L"");
+        wndInfo.bUsesXinput = false;
+    }
 	return false;
 }
 
@@ -285,7 +318,7 @@ DWORD DoJoystick(JoyX& joyx)
 		TCHAR* exe = _tcsrchr(joyx.wndInfoFG.strModule, _T('\\'));
 		exe = exe == nullptr ? joyx.wndInfoFG.strModule : exe + 1;
 		//DebugOut(_T("Module: 0x%x %s\n"), (UINT)hWndFG, exe);
-		DebugOut(_T("%c %s %s\n"), (joyx.bEnabled ? '+' : '-'), exe, joyx.wndInfoFG.strWndText);
+		DebugOut(_T("%c %s \"%s\"\n"), (joyx.bEnabled ? '+' : '-'), exe, joyx.wndInfoFG.strWndText);
 	}
 
     for (int j = 0; j < XUSER_MAX_COUNT; ++j)
@@ -309,7 +342,9 @@ DWORD DoJoystick(JoyX& joyx)
 		r = XInputGetState(j, &joyState);
 		if (r == ERROR_SUCCESS)
 		{
-			if (joyState.dwPacketNumber != joyx.joyState[j].dwPacketNumber)
+            const JoyMapping& joyMapping = joyState.Gamepad.wButtons & joyx.altKey ? joyx.joyMappingAlt : wndJoyMapping;
+
+            if (joyState.dwPacketNumber != joyx.joyState[j].dwPacketNumber)
 			{
 #if 0
 				for (int button = XINPUT_GAMEPAD_DPAD_UP; button <= XINPUT_GAMEPAD_Y; button <<= 1)
@@ -334,8 +369,6 @@ DWORD DoJoystick(JoyX& joyx)
 #endif
 				for (int b = 0; b < XINPUT_MAX_BUTTONS; ++b)
 				{
-                    const JoyMapping& joyMapping = joyState.Gamepad.wButtons & joyx.altKey ? joyx.joyMappingAlt : wndJoyMapping;
-
 					const JoyMappingButton& joyMappingButton = joyMapping.joyMappingButton[b];
 					const WORD mask = 1 << b;
 					switch (joyMappingButton.type)
@@ -348,26 +381,42 @@ DWORD DoJoystick(JoyX& joyx)
 						break;
 
 					case JMBT_COMMAND:
+                        if (joyx.bEnabled && IsOnButtonDown(joyState, joyx.joyState[j], mask))
+                        {
+                            switch (joyMappingButton.command)
+                            {
+                            case JMC_TURN_OFF:
+                                if (joyx.XInputPowerOffController != nullptr)
+                                    joyx.XInputPowerOffController(j);
+                                break;
+
+                            case JMC_BUTTON:
+                                if (joyx.joyLast == JML_MOUSE)
+                                {
+                                    SendKey(VK_LBUTTON | KF_VKEY, true, joyx.keyDown);
+                                }
+                                else if (joyx.joyLast == JML_KEYBOARD)
+                                {
+                                    SendKey(VK_RETURN | KF_VKEY, true, joyx.keyDown);
+                                }
+                                break;
+                            }
+                        }
+
 						if (IsOnButtonUp(joyState, joyx.joyState[j], mask))
 						{
 							switch (joyMappingButton.command)
 							{
 							case JMC_TURN_OFF:
-								if (joyx.XInputPowerOffController != nullptr)
-									joyx.XInputPowerOffController(j);
 								break;
 
 							case JMC_BUTTON:
 								if (joyx.joyLast == JML_MOUSE)
 								{
-                                    if (joyx.bEnabled)
-									    SendKey(VK_LBUTTON | KF_VKEY, true, joyx.keyDown);
 									SendKey(VK_LBUTTON | KF_VKEY, false, joyx.keyDown);
 								}
 								else if (joyx.joyLast == JML_KEYBOARD)
 								{
-                                    if (joyx.bEnabled)
-									    SendKey(VK_RETURN | KF_VKEY, true, joyx.keyDown);
 									SendKey(VK_RETURN | KF_VKEY, false, joyx.keyDown);
 								}
 								break;
@@ -377,22 +426,33 @@ DWORD DoJoystick(JoyX& joyx)
 				}
 
 				// TODO User override joyx.bEnabled
-
-				joyx.joyState[j] = joyState;
-			}
+            }
 
 			if (joyx.bEnabled)
 			{
-                // TODO JoyMapping need to define how left/right thumb sticks are mapped
-				POINTFLOAT pfLeft = Normalize(joyState.Gamepad.sThumbLX, joyState.Gamepad.sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-				if (SendMouse((LONG)((pfLeft.x * MOUSE_SPEED) + 0.5), (LONG)((pfLeft.y * -MOUSE_SPEED) + 0.5)))
-					joyx.joyLast = JML_MOUSE;
+                for (int i = 0; i < JMT_MAX; ++i)
+                {
+                    JoyThumb t = static_cast<JoyThumb>(i);
 
-				POINTFLOAT pfRight = Normalize(joyState.Gamepad.sThumbRX, joyState.Gamepad.sThumbRY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-				if (SendScroll((LONG)((pfRight.x * WHEEL_DELTA) + 0.5), (LONG)((pfRight.y * WHEEL_DELTA) + 0.5)))
-					joyx.joyLast = JML_MOUSE;
+                    switch (joyMapping.joyMappingThumb[i])
+                    {
+                    case JMTT_MOUSE:
+                        POINTFLOAT pfLeft = Normalize(GetThumbX(joyState, t), GetThumbY(joyState, t), XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+                        if (SendMouse((LONG) ((pfLeft.x * MOUSE_SPEED) + 0.5), (LONG) ((pfLeft.y * -MOUSE_SPEED) + 0.5)))
+                            joyx.joyLast = JML_MOUSE;
+                        break;
+
+                    case JMTT_SCROLL:
+                        POINTFLOAT pfRight = Normalize(GetThumbX(joyState, t), GetThumbY(joyState, t), XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+                        if (SendScroll((LONG) ((pfRight.x * WHEEL_DELTA) + 0.5), (LONG) ((pfRight.y * WHEEL_DELTA) + 0.5)))
+                            joyx.joyLast = JML_MOUSE;
+                        break;
+                    }
+                }
 			}
-		}
+
+            joyx.joyState[j] = joyState;
+        }
 	}
 
     return ret;
@@ -400,6 +460,8 @@ DWORD DoJoystick(JoyX& joyx)
 
 void Init(JoyX& joyx)
 {
+    joyx.joyMapping.joyMappingThumb[JMT_LEFT] = JMTT_MOUSE;
+    joyx.joyMapping.joyMappingThumb[JMT_RIGHT] = JMTT_SCROLL;
 	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =					{ JMBT_COMMAND, JMC_BUTTON };
 	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =					{ JMBT_KEYS, { VK_ESCAPE | KF_VKEY, 0 } };
 	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] =					{ JMBT_KEYS, { VK_RBUTTON | KF_VKEY, 0 } };
@@ -451,6 +513,7 @@ void Init(JoyX& joyx)
 		_tcscpy_s(joyMappingInvisibleInc.strModule, _T("*\\invisibleinc.exe"));
 		_tcscpy_s(joyMappingInvisibleInc.strWndClass, _T("*"));
 		_tcscpy_s(joyMappingInvisibleInc.strWndText, _T("*"));
+        joyMappingInvisibleInc.joyMappingThumb[JMT_LEFT] = JMTT_MOUSE;
 		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] = { JMBT_KEYS,{ VK_LBUTTON | KF_VKEY, 0 } };
 		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =				{ JMBT_KEYS, { VK_SPACE| KF_VKEY, 0 } };
 		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] = { JMBT_KEYS,{ VK_MENU | KF_VKEY, 0 } };

@@ -5,8 +5,10 @@
 #define J_BATTERY_CHANGED 1
 
 enum JoyMappingButtonType { JMBT_NONE, JMBT_KEYS, JMBT_COMMAND };
+enum JoyMappingThumbType { JMTT_NONE, JMTT_MOUSE, JMTT_SCROLL};
 enum JoyMappingCommand { JMC_TURN_OFF, JMC_BUTTON };
 enum JoyMappingLast { JML_MOUSE, JML_KEYBOARD };
+enum JoyThumb { JMT_LEFT, JMT_RIGHT, JMT_MAX };
 
 typedef DWORD(WINAPI* XInputPowerOffController_t)(DWORD i);
 
@@ -37,6 +39,7 @@ struct JoyMapping
 	TCHAR strWndClass[MAX_PATH];
 	TCHAR strWndText[MAX_PATH];
 	JoyMappingButton joyMappingButton[XINPUT_MAX_BUTTONS];
+    JoyMappingThumbType joyMappingThumb[JMT_MAX];
 };
 
 struct JoyX

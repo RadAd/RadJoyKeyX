@@ -4,7 +4,7 @@
 
 DWORD GetModuleFileNameEx2(DWORD pid, LPWSTR lpFileName, DWORD nSize)
 {
-	HINSTANCE hInst = NULL;//GetWindowInstance(hWnd);
+    HINSTANCE hInst = NULL;//GetWindowInstance(hWnd);
 	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
 	DWORD ret = 0;
 	if (hProcess != NULL)
@@ -21,22 +21,25 @@ HMODULE FindModule(DWORD pid, LPCWSTR lpModuleSpec)
 
 	HANDLE hProcess = pid == ULONG_MAX ? GetCurrentProcess() : OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
 
-	HMODULE hModules[1024];
-	DWORD dwNeeded = 0;
-	EnumProcessModules(hProcess, hModules, sizeof(hModules), &dwNeeded);
-	DWORD count = min(ARRAYSIZE(hModules), dwNeeded / sizeof(HMODULE));
-	for (DWORD i = 0; i < count; ++i)
-	{
-		TCHAR strModule[1024] = { 0 };
-		DWORD r = GetModuleFileNameEx(hProcess, hModules[i], strModule, ARRAYSIZE(strModule));
-		if (PathMatchSpec(strModule, lpModuleSpec))
-		{
-			hFoundModule = hModules[i];
-			break;
-		}
-	}
+    if (hProcess != NULL)
+    {
+        HMODULE hModules[1024];
+        DWORD dwNeeded = 0;
+        EnumProcessModules(hProcess, hModules, sizeof(hModules), &dwNeeded);
+        DWORD count = min(ARRAYSIZE(hModules), dwNeeded / sizeof(HMODULE));
+        for (DWORD i = 0; i < count; ++i)
+        {
+            TCHAR strModule[1024] = { 0 };
+            DWORD r = GetModuleFileNameEx(hProcess, hModules[i], strModule, ARRAYSIZE(strModule));
+            if (r != 0 && PathMatchSpec(strModule, lpModuleSpec))
+            {
+                hFoundModule = hModules[i];
+                break;
+            }
+        }
 
-	CloseHandle(hProcess);
+        CloseHandle(hProcess);
+    }
 	return hFoundModule;
 }
 
