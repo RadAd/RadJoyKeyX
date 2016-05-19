@@ -4,7 +4,7 @@
 #include "WinUtils.h"
 #include <Shlwapi.h>
 
-#define KF_VKEY	   0x0400
+#define KF_SCANKEY	   0x0400
 
 #define MOUSE_SENSITIVITY 3
 #define MOUSE_SPEED 5
@@ -21,7 +21,20 @@ bool SendKey(WORD wScan, bool bDown, bool* keyDown)
 {
 	INPUT ip = { INPUT_KEYBOARD };
 	WORD vk = wScan & 0xFF;
-	if (wScan & KF_VKEY)
+
+    if (wScan & KF_SCANKEY)
+    {
+        vk = MapVirtualKey(vk, MAPVK_VSC_TO_VK);
+        ip.ki.wScan = wScan;
+        ip.ki.wVk = vk;
+        ip.ki.dwFlags = 0;
+        if (!bDown)
+            ip.ki.dwFlags |= KEYEVENTF_KEYUP;
+        if (wScan & KF_EXTENDED)
+            ip.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+        //ip.ki.dwFlags |= KEYEVENTF_SCANCODE;
+    }
+    else
 	{
 		switch (vk)
 		{
@@ -61,18 +74,6 @@ bool SendKey(WORD wScan, bool bDown, bool* keyDown)
 			//ip.ki.dwFlags |= KEYEVENTF_SCANCODE;
 			break;
 		}
-	}
-	else
-	{
-		vk = MapVirtualKey(vk, MAPVK_VSC_TO_VK);
-		ip.ki.wScan = wScan;
-		ip.ki.wVk = vk;
-		ip.ki.dwFlags = 0;
-		if (!bDown)
-			ip.ki.dwFlags |= KEYEVENTF_KEYUP;
-		if (wScan & KF_EXTENDED)
-			ip.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
-		//ip.ki.dwFlags |= KEYEVENTF_SCANCODE;
 	}
 
 	bool bSend = true;
@@ -399,11 +400,11 @@ JoystickRet DoJoystick(JoyX& joyx)
                             case JMC_BUTTON:
                                 if (joyx.joyLast == JML_MOUSE)
                                 {
-                                    SendKey(VK_LBUTTON | KF_VKEY, true, joyx.keyDown);
+                                    SendKey(VK_LBUTTON, true, joyx.keyDown);
                                 }
                                 else if (joyx.joyLast == JML_KEYBOARD)
                                 {
-                                    SendKey(VK_RETURN | KF_VKEY, true, joyx.keyDown);
+                                    SendKey(VK_RETURN, true, joyx.keyDown);
                                 }
                                 break;
                             }
@@ -419,11 +420,11 @@ JoystickRet DoJoystick(JoyX& joyx)
 							case JMC_BUTTON:
 								if (joyx.joyLast == JML_MOUSE)
 								{
-									SendKey(VK_LBUTTON | KF_VKEY, false, joyx.keyDown);
+									SendKey(VK_LBUTTON, false, joyx.keyDown);
 								}
 								else if (joyx.joyLast == JML_KEYBOARD)
 								{
-									SendKey(VK_RETURN | KF_VKEY, false, joyx.keyDown);
+									SendKey(VK_RETURN, false, joyx.keyDown);
 								}
 								break;
 							}
@@ -457,23 +458,23 @@ JoystickRet DoJoystick(JoyX& joyx)
                         {
                             bool bSend = false;
                             if (pf.x < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
-                                bSend |= SendKey('A' | KF_VKEY, true, joyx.keyDown);
+                                bSend |= SendKey('A', true, joyx.keyDown);
                             else if (pf.x > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
-                                bSend |= SendKey('D' | KF_VKEY, true, joyx.keyDown);
+                                bSend |= SendKey('D', true, joyx.keyDown);
                             else
                             {
-                                bSend |= SendKey('A' | KF_VKEY, false, joyx.keyDown);
-                                bSend |= SendKey('D' | KF_VKEY, false, joyx.keyDown);
+                                bSend |= SendKey('A', false, joyx.keyDown);
+                                bSend |= SendKey('D', false, joyx.keyDown);
                             }
 
                             if (pf.y < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
-                                bSend |= SendKey('W' | KF_VKEY, true, joyx.keyDown);
+                                bSend |= SendKey('W', true, joyx.keyDown);
                             else if (pf.y > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
-                                bSend |= SendKey('S' | KF_VKEY, true, joyx.keyDown);
+                                bSend |= SendKey('S', true, joyx.keyDown);
                             else
                             {
-                                bSend |= SendKey('W' | KF_VKEY, false, joyx.keyDown);
-                                bSend |= SendKey('S' | KF_VKEY, false, joyx.keyDown);
+                                bSend |= SendKey('W', false, joyx.keyDown);
+                                bSend |= SendKey('S', false, joyx.keyDown);
                             }
                             if (bSend)
                                 joyx.joyLast = JML_KEYBOARD;
@@ -495,27 +496,27 @@ void Init(JoyX& joyx)
     joyx.joyMapping.joyMappingThumb[JMT_LEFT] = JMTT_MOUSE;
     joyx.joyMapping.joyMappingThumb[JMT_RIGHT] = JMTT_SCROLL;
 	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =					{ JMBT_COMMAND, JMC_BUTTON };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =					{ JMBT_KEYS, { VK_ESCAPE | KF_VKEY, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] =					{ JMBT_KEYS, { VK_RBUTTON | KF_VKEY, 0 } };
-	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =					  { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE | KF_VKEY, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] =				{ JMBT_KEYS, { VK_UP | KF_VKEY, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] =			{ JMBT_KEYS, { VK_DOWN | KF_VKEY, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_LEFT)] =			{ JMBT_KEYS, { VK_LEFT | KF_VKEY, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_RIGHT)] =			{ JMBT_KEYS, { VK_RIGHT | KF_VKEY, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =				{ JMBT_KEYS, { VK_LWIN | KF_VKEY, 0 } };
-	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =				  { JMBT_KEYS, { VK_CONTROL | KF_VKEY, VK_MENU | KF_VKEY, VK_TAB | KF_VKEY, 0 } };
-	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =		  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK | KF_VKEY, 0 } };
-	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =      { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK | KF_VKEY, 0 } };
+	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =					{ JMBT_KEYS, { VK_ESCAPE, 0 } };
+	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] =					{ JMBT_KEYS, { VK_RBUTTON, 0 } };
+	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =					  { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
+	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] =				{ JMBT_KEYS, { VK_UP, 0 } };
+	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] =			{ JMBT_KEYS, { VK_DOWN, 0 } };
+	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_LEFT)] =			{ JMBT_KEYS, { VK_LEFT, 0 } };
+	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_RIGHT)] =			{ JMBT_KEYS, { VK_RIGHT, 0 } };
+	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =				{ JMBT_KEYS, { VK_LWIN, 0 } };
+	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =				  { JMBT_KEYS, { VK_CONTROL, VK_MENU, VK_TAB, 0 } };
+	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =		  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
+	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =      { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
 
 	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =				  { JMBT_COMMAND, JMC_BUTTON };
-	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =				  { JMBT_KEYS, { VK_ESCAPE | KF_VKEY, 0 } };
-	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] =				  { JMBT_KEYS, { VK_RBUTTON | KF_VKEY, 0 } };
-	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =				{ JMBT_KEYS, { VK_MEDIA_STOP | KF_VKEY, 0 } };
+	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =				  { JMBT_KEYS, { VK_ESCAPE, 0 } };
+	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] =				  { JMBT_KEYS, { VK_RBUTTON, 0 } };
+	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =				{ JMBT_KEYS, { VK_MEDIA_STOP, 0 } };
 	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =			{ JMBT_COMMAND, JMC_TURN_OFF };
-	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =	{ JMBT_KEYS, { VK_VOLUME_MUTE | KF_VKEY, 0 } };
+	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =	{ JMBT_KEYS, { VK_VOLUME_MUTE, 0 } };
 	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =	  { JMBT_COMMAND, JMC_SHOW_WINDOW };
-	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] =			{ JMBT_KEYS, { VK_VOLUME_UP | KF_VKEY, 0 } };
-	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] =		{ JMBT_KEYS, { VK_VOLUME_DOWN | KF_VKEY, 0 } };
+	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] =			{ JMBT_KEYS, { VK_VOLUME_UP, 0 } };
+	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] =		{ JMBT_KEYS, { VK_VOLUME_DOWN, 0 } };
     
 	{
 		JoyMapping& joyMappingMedia = joyx.joyMappingOther[joyx.joyMappingOtherCount++];
@@ -523,10 +524,10 @@ void Init(JoyX& joyx)
 		_tcscpy_s(joyMappingMedia.strModule, _T("*\\mpc-hc64.exe"));
 		_tcscpy_s(joyMappingMedia.strWndClass, _T("*"));
 		_tcscpy_s(joyMappingMedia.strWndText, _T("*"));
-		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =              { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE | KF_VKEY, 0 } };
-		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =              { JMBT_KEYS, { VK_MENU | KF_VKEY, VK_RETURN | KF_VKEY, 0 } };
-		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK | KF_VKEY, 0 } };
-		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK | KF_VKEY, 0 } };
+		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =              { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
+		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =              { JMBT_KEYS, { VK_MENU, VK_RETURN, 0 } };
+		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
+		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
 	}
 
     if (false)
@@ -542,9 +543,9 @@ void Init(JoyX& joyx)
 		_tcscpy_s(joyMappingBrowser.strModule, _T("*\\ApplicationFrameHost.exe"));
 		_tcscpy_s(joyMappingBrowser.strWndClass, _T("ApplicationFrameWindow"));
 		_tcscpy_s(joyMappingBrowser.strWndText, _T("*- Microsoft Edge"));
-		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =				 { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE | KF_VKEY, 0 } };
-		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { VK_BROWSER_BACK | KF_VKEY, 0 } };
-		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { VK_BROWSER_FORWARD | KF_VKEY, 0 } };
+		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =				 { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
+		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { VK_BROWSER_BACK, 0 } };
+		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { VK_BROWSER_FORWARD, 0 } };
 	}
 
 	{
@@ -553,11 +554,11 @@ void Init(JoyX& joyx)
 		_tcscpy_s(joyMappingInvisibleInc.strWndClass, _T("*"));
 		_tcscpy_s(joyMappingInvisibleInc.strWndText, _T("*"));
         joyMappingInvisibleInc.joyMappingThumb[JMT_LEFT] = JMTT_MOUSE;
-		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =              { JMBT_KEYS,{ VK_LBUTTON | KF_VKEY, 0 } };
-		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =			  { JMBT_KEYS, { VK_SPACE| KF_VKEY, 0 } };
-		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS,{ VK_MENU | KF_VKEY, 0 } };
-		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS,{ VK_TAB | KF_VKEY, 0 } };
-		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_THUMB)] =     { JMBT_KEYS,{ VK_RETURN | KF_VKEY, 0 } };
+		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =              { JMBT_KEYS,{ VK_LBUTTON, 0 } };
+		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =			  { JMBT_KEYS, { VK_SPACE, 0 } };
+		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS,{ VK_MENU, 0 } };
+		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS,{ VK_TAB, 0 } };
+		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_THUMB)] =     { JMBT_KEYS,{ VK_RETURN, 0 } };
 	}
 
     {
@@ -568,14 +569,14 @@ void Init(JoyX& joyx)
         //_tcscpy_s(joyMappingWitcher.strWndText, _T("The Witcher (*"));
         joyMappingWitcher.joyMappingThumb[JMT_LEFT] = JMTT_WASD;
         joyMappingWitcher.joyMappingThumb[JMT_RIGHT] = JMTT_MOUSE;
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =              { JMBT_KEYS, { VK_LBUTTON | KF_VKEY, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =              { JMBT_KEYS, { VK_RBUTTON | KF_VKEY, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =              { JMBT_KEYS, { VK_TAB | KF_VKEY, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { 'Q' | KF_VKEY, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { 'E' | KF_VKEY, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_THUMB)] =     { JMBT_KEYS, { 'F' | KF_VKEY, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =          { JMBT_KEYS, { VK_ESCAPE | KF_VKEY, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =           { JMBT_KEYS, { VK_SPACE | KF_VKEY, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =              { JMBT_KEYS, { VK_LBUTTON, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =              { JMBT_KEYS, { VK_RBUTTON, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =              { JMBT_KEYS, { VK_TAB, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { 'Q', 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { 'E', 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_THUMB)] =     { JMBT_KEYS, { 'F', 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =          { JMBT_KEYS, { VK_ESCAPE, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =           { JMBT_KEYS, { VK_SPACE, 0 } };
     }
 
     joyx.altKey = XINPUT_GAMEPAD_BACK;
