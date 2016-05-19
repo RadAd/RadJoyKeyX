@@ -216,6 +216,9 @@ bool DoButtonUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD bu
 bool IsWnd(const WndInfo& wndInfo, const TCHAR* strModule, const TCHAR* strClass, const TCHAR* strText)
 {
     bool match = true;
+    match &= PathMatchSpec(wndInfo.strModule, strModule) != FALSE;
+    match &= PathMatchSpec(wndInfo.strWndClass, strClass) != FALSE;
+    match &= PathMatchSpec(wndInfo.strWndText, strText) != FALSE;
     return match;
 }
 
@@ -558,6 +561,21 @@ void Init(JoyX& joyx)
 	}
 
     {
+        JoyMapping& joyMappingWitcher= joyx.joyMappingOther[joyx.joyMappingOtherCount++];
+        _tcscpy_s(joyMappingWitcher.strModule, _T("*\\witcher.exe"));
+        _tcscpy_s(joyMappingWitcher.strWndClass, _T("*"));
+        _tcscpy_s(joyMappingWitcher.strWndText, _T("*"));
+        //_tcscpy_s(joyMappingWitcher.strWndText, _T("The Witcher (*"));
+        joyMappingWitcher.joyMappingThumb[JMT_LEFT] = JMTT_WASD;
+        joyMappingWitcher.joyMappingThumb[JMT_RIGHT] = JMTT_MOUSE;
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =              { JMBT_KEYS, { VK_LBUTTON | KF_VKEY, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =              { JMBT_KEYS, { VK_RBUTTON | KF_VKEY, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =              { JMBT_KEYS, { VK_TAB | KF_VKEY, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { 'Q' | KF_VKEY, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { 'E' | KF_VKEY, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_THUMB)] =     { JMBT_KEYS, { 'F' | KF_VKEY, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =          { JMBT_KEYS, { VK_ESCAPE | KF_VKEY, 0 } };
+        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =           { JMBT_KEYS, { VK_SPACE | KF_VKEY, 0 } };
     }
 
     joyx.altKey = XINPUT_GAMEPAD_BACK;
