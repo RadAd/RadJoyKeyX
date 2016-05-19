@@ -205,8 +205,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case TIMER_JOY:
 			if (IsWindowEnabled(hWnd))
 			{
-				DWORD ret = DoJoystick(g_JoyX);
-                if (ret & J_BATTERY_CHANGED)
+                JoystickRet ret = DoJoystick(g_JoyX);
+                if (ret.bBatteryChanged)
                     UpdateTrayMsg(hWnd);
 			}
 			break;

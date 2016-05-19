@@ -2,10 +2,8 @@
 
 #define XINPUT_MAX_BUTTONS	   16
 
-#define J_BATTERY_CHANGED 1
-
 enum JoyMappingButtonType { JMBT_NONE, JMBT_KEYS, JMBT_COMMAND };
-enum JoyMappingThumbType { JMTT_NONE, JMTT_MOUSE, JMTT_SCROLL};
+enum JoyMappingThumbType { JMTT_NONE, JMTT_MOUSE, JMTT_SCROLL, JMTT_WASD };
 enum JoyMappingCommand { JMC_TURN_OFF, JMC_BUTTON };
 enum JoyMappingLast { JML_MOUSE, JML_KEYBOARD };
 enum JoyThumb { JMT_LEFT, JMT_RIGHT, JMT_MAX };
@@ -63,6 +61,15 @@ struct JoyX
 	bool keyDown[0xFF];
 };
 
+struct JoystickRet
+{
+    JoystickRet()
+        : bBatteryChanged(false)
+    { }
+
+    bool bBatteryChanged : 1;
+};
+
 void Init(JoyX& joyx);
-DWORD DoJoystick(JoyX& joyx);
+JoystickRet DoJoystick(JoyX& joyx);
 void AppendBattInfo(TCHAR* s, int length, const XINPUT_BATTERY_INFORMATION* joyBattery);
