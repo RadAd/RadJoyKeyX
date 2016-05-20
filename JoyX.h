@@ -58,7 +58,6 @@ struct JoyX
 	XINPUT_BATTERY_INFORMATION joyBattery[XUSER_MAX_COUNT];
 
 	WORD altKey;
-	JoyMapping joyMapping;
 	JoyMapping joyMappingAlt;
 	std::map<std::wstring, JoyMapping> joyMappingOther;
 

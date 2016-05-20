@@ -9,6 +9,8 @@
 #define MOUSE_SENSITIVITY 3
 #define MOUSE_SPEED 5
 
+#define DEFAULT_MAPPING L"Default"
+
 inline POINTFLOAT Normalize(SHORT x, SHORT y, SHORT deadZone)
 {
 	return {
@@ -291,7 +293,9 @@ const JoyMapping& GetWndJoyMapping(const JoyX& joyx)
             return thisJoyMapping;
         }
     }
-    return joyx.joyMapping;
+    auto it = joyx.joyMappingOther.find(DEFAULT_MAPPING);
+    //ASSERT(it != joyx.joyMappingOther.end());
+    return it->second;
 }
 
 JoystickRet DoJoystick(JoyX& joyx)
@@ -307,7 +311,7 @@ JoystickRet DoJoystick(JoyX& joyx)
     const JoyMapping& wndJoyMapping = GetWndJoyMapping(joyx);
     
 	{
-		bool bEnabled = !joyx.wndInfoFG.bUsesXinput || joyx.notifyState >= QUNS_ACCEPTS_NOTIFICATIONS || &wndJoyMapping != &joyx.joyMapping;
+		bool bEnabled = !joyx.wndInfoFG.bUsesXinput || joyx.notifyState >= QUNS_ACCEPTS_NOTIFICATIONS || &wndJoyMapping != &joyx.joyMappingOther[DEFAULT_MAPPING];
 		// TODO Enable if Steam
 		if (bEnabled != joyx.bEnabled)
 		{
@@ -655,6 +659,26 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
         RegCloseKey(hKey);
         return true;
     }
+    else if (_tcsicmp(lpSubKey, DEFAULT_MAPPING) == 0)
+    {
+        //_tcscpy_s(joyMapping.strModule, _T("*"));
+
+        joyMapping.joyMappingThumb[JMT_LEFT] = JMTT_MOUSE;
+        joyMapping.joyMappingThumb[JMT_RIGHT] = JMTT_SCROLL;
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] = { JMBT_COMMAND, JMC_BUTTON };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] = { JMBT_KEYS, { VK_ESCAPE, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] = { JMBT_KEYS, { VK_RBUTTON, 0 } };
+        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =					  { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] = { JMBT_KEYS, { VK_UP, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] = { JMBT_KEYS, { VK_DOWN, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_LEFT)] = { JMBT_KEYS, { VK_LEFT, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_RIGHT)] = { JMBT_KEYS, { VK_RIGHT, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] = { JMBT_KEYS, { VK_LWIN, 0 } };
+        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =				  { JMBT_KEYS, { VK_CONTROL, VK_MENU, VK_TAB, 0 } };
+        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =		  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
+        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =      { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
+
+    }
     return false;
 }
 
@@ -663,20 +687,7 @@ void Init(JoyX& joyx)
     HKEY hMappingKey = NULL;
     RegOpenKey(HKEY_CURRENT_USER, L"SOFTWARE\\RadSoft\\RadJoyKeyX\\Mapping", &hMappingKey);
 
-    joyx.joyMapping.joyMappingThumb[JMT_LEFT] = JMTT_MOUSE;
-    joyx.joyMapping.joyMappingThumb[JMT_RIGHT] = JMTT_SCROLL;
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =					{ JMBT_COMMAND, JMC_BUTTON };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =					{ JMBT_KEYS, { VK_ESCAPE, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] =					{ JMBT_KEYS, { VK_RBUTTON, 0 } };
-	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =					  { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] =				{ JMBT_KEYS, { VK_UP, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] =			{ JMBT_KEYS, { VK_DOWN, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_LEFT)] =			{ JMBT_KEYS, { VK_LEFT, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_RIGHT)] =			{ JMBT_KEYS, { VK_RIGHT, 0 } };
-	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =				{ JMBT_KEYS, { VK_LWIN, 0 } };
-	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =				  { JMBT_KEYS, { VK_CONTROL, VK_MENU, VK_TAB, 0 } };
-	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =		  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
-	//joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =      { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
+    LoadFromRegistry(hMappingKey, DEFAULT_MAPPING, joyx.joyMappingOther[DEFAULT_MAPPING]);
 
 	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =				  { JMBT_COMMAND, JMC_BUTTON };
 	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =				  { JMBT_KEYS, { VK_ESCAPE, 0 } };
@@ -690,7 +701,7 @@ void Init(JoyX& joyx)
     
 	{
 		JoyMapping& joyMappingMedia = joyx.joyMappingOther[L"MediaPlayer"];
-        joyMappingMedia = joyx.joyMapping;
+        joyMappingMedia = joyx.joyMappingOther[DEFAULT_MAPPING];
 		_tcscpy_s(joyMappingMedia.strModule, _T("*\\mpc-hc64.exe"));
 		_tcscpy_s(joyMappingMedia.strWndClass, _T("*"));
 		_tcscpy_s(joyMappingMedia.strWndText, _T("*"));
@@ -702,7 +713,7 @@ void Init(JoyX& joyx)
 
 	{
 		JoyMapping& joyMappingBrowser = joyx.joyMappingOther[L"Browser"];
-        joyMappingBrowser = joyx.joyMapping;
+        joyMappingBrowser = joyx.joyMappingOther[DEFAULT_MAPPING];
 		_tcscpy_s(joyMappingBrowser.strModule, _T("*\\ApplicationFrameHost.exe"));
 		_tcscpy_s(joyMappingBrowser.strWndClass, _T("ApplicationFrameWindow"));
 		_tcscpy_s(joyMappingBrowser.strWndText, _T("*- Microsoft Edge"));
@@ -718,8 +729,12 @@ void Init(JoyX& joyx)
         DWORD l = ARRAYSIZE(n);
         if (RegEnumKeyEx(hMappingKey, i, n, &l, NULL, NULL, NULL, NULL) != ERROR_SUCCESS)
             break;
-        JoyMapping& joyMapping = joyx.joyMappingOther[n];
-        LoadFromRegistry(hMappingKey, n, joyMapping);
+        auto it = joyx.joyMappingOther.find(n);
+        if (it == joyx.joyMappingOther.end())
+        {
+            JoyMapping& joyMapping = joyx.joyMappingOther[n];
+            LoadFromRegistry(hMappingKey, n, joyMapping);
+        }
         ++i;
     }
 
