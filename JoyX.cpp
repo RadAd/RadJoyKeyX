@@ -333,7 +333,7 @@ JoystickRet DoJoystick(JoyX& joyx)
 		TCHAR* exe = _tcsrchr(joyx.wndInfoFG.spec.strModule, _T('\\'));
 		exe = exe == nullptr ? joyx.wndInfoFG.spec.strModule : exe + 1;
 		//DebugOut(_T("Module: 0x%x %s\n"), (UINT)hWndFG, exe);
-		DebugOut(_T("%c %s \"%s\"\n"), (joyx.bEnabled ? '+' : '-'), exe, nameMapping);
+		DebugOut(_T("%c %s %s \"%s\"\n"), (joyx.bEnabled ? '+' : '-'), nameMapping.c_str(), exe, joyx.wndInfoFG.spec.strWndText);
 	}
 
     for (int j = 0; j < XUSER_MAX_COUNT; ++j)
@@ -531,28 +531,13 @@ LPCWSTR GetThumbName(JoyThumb t)
     }
 }
 
-bool LoadRegString(HKEY hKey, LPCWSTR lpValue, LPWSTR str, DWORD nLength, LPCWSTR def)
-{
-    DWORD nSize = nLength * sizeof(TCHAR);
-    if (RegGetValue(hKey, NULL, lpValue, RRF_RT_REG_SZ, NULL, str, &nSize) == ERROR_SUCCESS)
-    {
-        return true;
-    }
-    else
-    {
-        _tcscpy_s(str, nLength, def);
-        return false;
-    }
-
-}
-
 bool is(LPCWSTR start, LPCWSTR end, LPCWSTR compare)
 {
     size_t l = _tcsclen(compare);
     return (end - start) == l && _tcsncicmp(start, compare, l) == 0;
 }
 
-WORD GetButton(LPCWSTR start, LPCWSTR end)
+WORD GetKey(LPCWSTR start, LPCWSTR end)
 {
          if (is(start, end, TEXT("LBUTTON")))   return VK_LBUTTON;
     else if (is(start, end, TEXT("RBUTTON")))   return VK_RBUTTON;
@@ -574,6 +559,20 @@ WORD GetButton(LPCWSTR start, LPCWSTR end)
     else if (is(start, end, TEXT("APPS")))      return VK_APPS;
     else if (is(start, end, TEXT("BACK")))      return VK_BACK;
     else if (is(start, end, TEXT("TAB")))       return VK_TAB;
+    else if (is(start, end, TEXT("BROWSER_BACK")))      return VK_BROWSER_BACK;
+    else if (is(start, end, TEXT("BROWSER_FORWARD")))   return VK_BROWSER_FORWARD;
+    else if (is(start, end, TEXT("BROWSER_REFRESH")))   return VK_BROWSER_REFRESH;
+    else if (is(start, end, TEXT("BROWSER_STOP")))      return VK_BROWSER_STOP;
+    else if (is(start, end, TEXT("BROWSER_SEARCH")))    return VK_BROWSER_SEARCH;
+    else if (is(start, end, TEXT("BROWSER_FAVORITES"))) return VK_BROWSER_FAVORITES;
+    else if (is(start, end, TEXT("BROWSER_HOME")))      return VK_BROWSER_HOME;
+    else if (is(start, end, TEXT("VOLUME_MUTE")))       return VK_VOLUME_MUTE;
+    else if (is(start, end, TEXT("VOLUME_DOWN")))       return VK_VOLUME_DOWN;
+    else if (is(start, end, TEXT("VOLUME_UP")))         return VK_VOLUME_UP;
+    else if (is(start, end, TEXT("MEDIA_NEXT_TRACK")))  return VK_MEDIA_NEXT_TRACK;
+    else if (is(start, end, TEXT("MEDIA_PREV_TRACK")))  return VK_MEDIA_PREV_TRACK;
+    else if (is(start, end, TEXT("MEDIA_STOP")))        return VK_MEDIA_STOP;
+    else if (is(start, end, TEXT("MEDIA_PLAY_PAUSE")))  return VK_MEDIA_PLAY_PAUSE;
     // TODO add VK_BROWSER_*, VK_VOLUME_*, VK_MEDIA_*
     else return 0;
 }
@@ -608,20 +607,27 @@ JoyMapping::JoyMapping()
 
 bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
 {
+    DebugOut(L"LoadFromRegistry: %s\n", lpSubKey);
     HKEY hKey = NULL;
     if (RegOpenKey(hParent, lpSubKey, &hKey) == ERROR_SUCCESS)
     {
-        LoadRegString(hKey, L"Module", joyMapping.spec.strModule, ARRAYSIZE(joyMapping.spec.strModule), _T(""));
-        LoadRegString(hKey, L"Class", joyMapping.spec.strWndClass, ARRAYSIZE(joyMapping.spec.strWndClass), _T("*"));
-        LoadRegString(hKey, L"Title", joyMapping.spec.strWndText, ARRAYSIZE(joyMapping.spec.strWndText), _T("*"));
+        TCHAR strTemp[1024] = L"";
+        if (RegGetString(hKey, L"Base", strTemp, ARRAYSIZE(strTemp), _T("")))
+        {
+            LoadFromRegistry(hParent, strTemp, joyMapping);
+        }
 
-        TCHAR strTemp[ARRAYSIZE(JoyMappingButton::keys)] = L"";
+        RegGetString(hKey, L"Module", joyMapping.spec.strModule, ARRAYSIZE(joyMapping.spec.strModule), _T(""));
+        RegGetString(hKey, L"Class", joyMapping.spec.strWndClass, ARRAYSIZE(joyMapping.spec.strWndClass), _T("*"));
+        RegGetString(hKey, L"Title", joyMapping.spec.strWndText, ARRAYSIZE(joyMapping.spec.strWndText), _T("*"));
+
         for (int b = 0; b < XINPUT_MAX_BUTTONS; ++b)
         {
             LPCWSTR n = GetButtonName(1 << b);
             JoyMappingButton& button = joyMapping.joyMappingButton[b];
-            if (LoadRegString(hKey, n, strTemp, ARRAYSIZE(strTemp), _T("")))
+            if (n != nullptr && RegGetString(hKey, n, strTemp, ARRAYSIZE(strTemp), _T("")))
             {
+                DebugOut(L"   Button: %s %s\n", n, strTemp);
                 if (_tcscmp(strTemp, TEXT("")) == 0)
                 {
                     button.type = JMBT_NONE;
@@ -635,9 +641,11 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
                     while (*strParseIn != TEXT('\0'))
                     {
                         const TCHAR* end = nullptr;
-                        if (*strParseIn == TEXT('[') && (end = _tcsrchr(strParseIn + 1, _T(']'))) != nullptr)
+                        if (*strParseIn == TEXT('[') && (end = _tcschr(strParseIn + 1, _T(']'))) != nullptr)
                         {
-                            *strParseOut = GetButton(strParseIn + 1, end);
+                            *strParseOut = GetKey(strParseIn + 1, end);
+                            if (*strParseOut == 0)
+                                DebugOut(L"Error: can't find key %s\n", std::wstring(strParseIn + 1, end).c_str());
                             strParseIn = end;
                         }
                         else
@@ -653,10 +661,12 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
         for (int t = 0; t < JMT_MAX; ++t)
         {
             LPCWSTR n = GetThumbName(static_cast<JoyThumb>(t));
-            if (LoadRegString(hKey, n, strTemp, ARRAYSIZE(strTemp), _T("")))
+            if (RegGetString(hKey, n, strTemp, ARRAYSIZE(strTemp), _T("")))
             {
                 JoyMappingThumbType& thumb = joyMapping.joyMappingThumb[t];
                 thumb = GetThumbType(strTemp);
+                if (thumb == JMTT_NONE)
+                    DebugOut(L"Error: can't find thumb %s\n", strTemp);
             }
         }
 
@@ -681,7 +691,10 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
         //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =				  { JMBT_KEYS, { VK_CONTROL, VK_MENU, VK_TAB, 0 } };
         //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =		  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
         //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =      { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
-
+    }
+    else
+    {
+        DebugOut(L"Error: cant't find mapping %s\n", lpSubKey);
     }
     return false;
 }
@@ -693,16 +706,13 @@ void Init(JoyX& joyx)
 
     LoadFromRegistry(hMappingKey, DEFAULT_MAPPING, joyx.joyMappingOther[DEFAULT_MAPPING]);
 
-	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =				  { JMBT_COMMAND, JMC_BUTTON };
-	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =				  { JMBT_KEYS, { VK_ESCAPE, 0 } };
-	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] =				  { JMBT_KEYS, { VK_RBUTTON, 0 } };
 	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =				{ JMBT_KEYS, { VK_MEDIA_STOP, 0 } };
 	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =			{ JMBT_COMMAND, JMC_TURN_OFF };
 	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =	{ JMBT_KEYS, { VK_VOLUME_MUTE, 0 } };
-	//joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =	  { JMBT_COMMAND, JMC_SHOW_WINDOW };
 	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] =			{ JMBT_KEYS, { VK_VOLUME_UP, 0 } };
 	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] =		{ JMBT_KEYS, { VK_VOLUME_DOWN, 0 } };
     
+    if (false)
 	{
 		JoyMapping& joyMappingMedia = joyx.joyMappingOther[L"MediaPlayer"];
         joyMappingMedia = joyx.joyMappingOther[DEFAULT_MAPPING];
@@ -715,6 +725,7 @@ void Init(JoyX& joyx)
 		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
 	}
 
+    if (false)
 	{
 		JoyMapping& joyMappingBrowser = joyx.joyMappingOther[L"Browser"];
         joyMappingBrowser = joyx.joyMappingOther[DEFAULT_MAPPING];

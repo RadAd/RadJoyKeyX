@@ -43,9 +43,24 @@ HMODULE FindModule(DWORD pid, LPCWSTR lpModuleSpec)
 	return hFoundModule;
 }
 
+bool RegGetString(HKEY hKey, LPCWSTR lpValue, LPWSTR str, DWORD nLength, LPCWSTR def)
+{
+    DWORD nSize = nLength * sizeof(TCHAR);
+    if (RegGetValue(hKey, NULL, lpValue, RRF_RT_REG_SZ, NULL, str, &nSize) == ERROR_SUCCESS)
+    {
+        return true;
+    }
+    else
+    {
+        _tcscpy_s(str, nLength, def);
+        return false;
+    }
+
+}
+
 void DebugOut(const TCHAR* format, ...)
 {
-	TCHAR buffer[1024];
+	TCHAR buffer[2 * 1024];
 	va_list args;
 	va_start(args, format);
 	_vsnwprintf_s(buffer, ARRAYSIZE(buffer), format, args);
