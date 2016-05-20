@@ -216,12 +216,12 @@ bool DoButtonUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD bu
 	return false;
 }
 
-bool IsWnd(const WndInfo& wndInfo, const TCHAR* strModule, const TCHAR* strClass, const TCHAR* strText)
+bool IsWnd(const WndSpec& wnd, const WndSpec& spec)
 {
     bool match = true;
-    match &= PathMatchSpec(wndInfo.strModule, strModule) != FALSE;
-    match &= PathMatchSpec(wndInfo.strWndClass, strClass) != FALSE;
-    match &= PathMatchSpec(wndInfo.strWndText, strText) != FALSE;
+    match &= PathMatchSpec(wnd.strModule, spec.strModule) != FALSE;
+    match &= PathMatchSpec(wnd.strWndClass, spec.strWndClass) != FALSE;
+    match &= PathMatchSpec(wnd.strWndText, spec.strWndText) != FALSE;
     return match;
 }
 
@@ -233,15 +233,15 @@ bool Update(WndInfo& wndInfo)
 	{
 		GetWindowThreadProcessId(hWndFG, &wndInfo.pid);
 
-		r = GetModuleFileNameEx2(wndInfo.pid, wndInfo.strModule, ARRAYSIZE(wndInfo.strModule));
+		r = GetModuleFileNameEx2(wndInfo.pid, wndInfo.spec.strModule, ARRAYSIZE(wndInfo.spec.strModule));
 		if (r == 0)
-            _tcscpy_s(wndInfo.strModule, L"[Unknown]");
-		r = GetClassName(hWndFG, wndInfo.strWndClass, ARRAYSIZE(wndInfo.strWndClass));
+            _tcscpy_s(wndInfo.spec.strModule, L"[Unknown]");
+		r = GetClassName(hWndFG, wndInfo.spec.strWndClass, ARRAYSIZE(wndInfo.spec.strWndClass));
 		if (r == 0)
-            _tcscpy_s(wndInfo.strWndClass, L"");
-		r = GetWindowText(hWndFG, wndInfo.strWndText, ARRAYSIZE(wndInfo.strWndText));
+            _tcscpy_s(wndInfo.spec.strWndClass, L"");
+		r = GetWindowText(hWndFG, wndInfo.spec.strWndText, ARRAYSIZE(wndInfo.spec.strWndText));
 		if (r == 0)
-            _tcscpy_s(wndInfo.strWndText, L"");
+            _tcscpy_s(wndInfo.spec.strWndText, L"");
 		wndInfo.bUsesXinput = FindModule(wndInfo.pid, _T("*\\xinput*.dll")) != NULL;
 
 #if 0
@@ -259,12 +259,13 @@ bool Update(WndInfo& wndInfo)
     else if (hWndFG == NULL)
     {
         wndInfo.pid = 0;
-        _tcscpy_s(wndInfo.strModule, L"[Unknown]");
-        _tcscpy_s(wndInfo.strWndClass, L"");
-        _tcscpy_s(wndInfo.strWndText, L"");
+        _tcscpy_s(wndInfo.spec.strModule, L"[Unknown]");
+        _tcscpy_s(wndInfo.spec.strWndClass, L"");
+        _tcscpy_s(wndInfo.spec.strWndText, L"");
         wndInfo.bUsesXinput = false;
+        wndInfo.hWndFG = hWndFG;
     }
-	return false;
+    return false;
 }
 
 bool Update(QUERY_USER_NOTIFICATION_STATE& notifyStateOld)
@@ -287,7 +288,7 @@ const JoyMapping& GetWndJoyMapping(const JoyX& joyx)
     {
         const JoyMapping& thisJoyMapping = it->second;
         //DebugOut(_T("    Search: %s\n"), thisJoyMapping.strModule);
-        if (IsWnd(joyx.wndInfoFG, thisJoyMapping.strModule, thisJoyMapping.strWndClass, thisJoyMapping.strWndText))
+        if (IsWnd(joyx.wndInfoFG.spec, thisJoyMapping.spec))
         {
             //DebugOut(_T("    Found: %s\n"), thisJoyMapping.strModule);
             return thisJoyMapping;
@@ -326,10 +327,10 @@ JoystickRet DoJoystick(JoyX& joyx)
 
 	if (bWindowChanged)
 	{
-		TCHAR* exe = _tcsrchr(joyx.wndInfoFG.strModule, _T('\\'));
-		exe = exe == nullptr ? joyx.wndInfoFG.strModule : exe + 1;
+		TCHAR* exe = _tcsrchr(joyx.wndInfoFG.spec.strModule, _T('\\'));
+		exe = exe == nullptr ? joyx.wndInfoFG.spec.strModule : exe + 1;
 		//DebugOut(_T("Module: 0x%x %s\n"), (UINT)hWndFG, exe);
-		DebugOut(_T("%c %s \"%s\"\n"), (joyx.bEnabled ? '+' : '-'), exe, joyx.wndInfoFG.strWndText);
+		DebugOut(_T("%c %s \"%s\"\n"), (joyx.bEnabled ? '+' : '-'), exe, joyx.wndInfoFG.spec.strWndText);
 	}
 
     for (int j = 0; j < XUSER_MAX_COUNT; ++j)
@@ -584,9 +585,9 @@ JoyMappingThumbType GetThumbType(LPCWSTR s)
 
 JoyMapping::JoyMapping()
 {
-    _tcscpy_s(strModule, _T(""));
-    _tcscpy_s(strWndClass, _T(""));
-    _tcscpy_s(strWndText, _T(""));
+    _tcscpy_s(spec.strModule, _T(""));
+    _tcscpy_s(spec.strWndClass, _T(""));
+    _tcscpy_s(spec.strWndText, _T(""));
 
     for (int b = 0; b < XINPUT_MAX_BUTTONS; ++b)
     {
@@ -607,9 +608,9 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
     HKEY hKey = NULL;
     if (RegOpenKey(hParent, lpSubKey, &hKey) == ERROR_SUCCESS)
     {
-        LoadRegString(hKey, L"Module", joyMapping.strModule, ARRAYSIZE(joyMapping.strModule), _T(""));
-        LoadRegString(hKey, L"Class", joyMapping.strWndClass, ARRAYSIZE(joyMapping.strWndClass), _T("*"));
-        LoadRegString(hKey, L"Title", joyMapping.strWndText, ARRAYSIZE(joyMapping.strWndText), _T("*"));
+        LoadRegString(hKey, L"Module", joyMapping.spec.strModule, ARRAYSIZE(joyMapping.spec.strModule), _T(""));
+        LoadRegString(hKey, L"Class", joyMapping.spec.strWndClass, ARRAYSIZE(joyMapping.spec.strWndClass), _T("*"));
+        LoadRegString(hKey, L"Title", joyMapping.spec.strWndText, ARRAYSIZE(joyMapping.spec.strWndText), _T("*"));
 
         TCHAR strTemp[ARRAYSIZE(JoyMappingButton::keys)] = L"";
         for (int b = 0; b < XINPUT_MAX_BUTTONS; ++b)
@@ -702,9 +703,9 @@ void Init(JoyX& joyx)
 	{
 		JoyMapping& joyMappingMedia = joyx.joyMappingOther[L"MediaPlayer"];
         joyMappingMedia = joyx.joyMappingOther[DEFAULT_MAPPING];
-		_tcscpy_s(joyMappingMedia.strModule, _T("*\\mpc-hc64.exe"));
-		_tcscpy_s(joyMappingMedia.strWndClass, _T("*"));
-		_tcscpy_s(joyMappingMedia.strWndText, _T("*"));
+		_tcscpy_s(joyMappingMedia.spec.strModule, _T("*\\mpc-hc64.exe"));
+		_tcscpy_s(joyMappingMedia.spec.strWndClass, _T("*"));
+		_tcscpy_s(joyMappingMedia.spec.strWndText, _T("*"));
 		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =              { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
 		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =              { JMBT_KEYS, { VK_MENU, VK_RETURN, 0 } };
 		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
@@ -714,9 +715,9 @@ void Init(JoyX& joyx)
 	{
 		JoyMapping& joyMappingBrowser = joyx.joyMappingOther[L"Browser"];
         joyMappingBrowser = joyx.joyMappingOther[DEFAULT_MAPPING];
-		_tcscpy_s(joyMappingBrowser.strModule, _T("*\\ApplicationFrameHost.exe"));
-		_tcscpy_s(joyMappingBrowser.strWndClass, _T("ApplicationFrameWindow"));
-		_tcscpy_s(joyMappingBrowser.strWndText, _T("*- Microsoft Edge"));
+		_tcscpy_s(joyMappingBrowser.spec.strModule, _T("*\\ApplicationFrameHost.exe"));
+		_tcscpy_s(joyMappingBrowser.spec.strWndClass, _T("ApplicationFrameWindow"));
+		_tcscpy_s(joyMappingBrowser.spec.strWndText, _T("*- Microsoft Edge"));
 		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =				 { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
 		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { VK_BROWSER_BACK, 0 } };
 		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { VK_BROWSER_FORWARD, 0 } };

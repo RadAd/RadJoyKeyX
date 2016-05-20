@@ -13,13 +13,18 @@ enum JoyThumb { JMT_LEFT, JMT_RIGHT, JMT_MAX };
 
 typedef DWORD(WINAPI* XInputPowerOffController_t)(DWORD i);
 
+struct WndSpec
+{
+    TCHAR strModule[MAX_PATH];
+    TCHAR strWndClass[MAX_PATH];
+    TCHAR strWndText[MAX_PATH];
+};
+
 struct WndInfo
 {
 	HWND hWndFG;
 	DWORD pid;
-	TCHAR strModule[MAX_PATH];
-	TCHAR strWndClass[MAX_PATH];
-	TCHAR strWndText[MAX_PATH];
+    WndSpec spec;
 	bool bUsesXinput;
 };
 
@@ -38,9 +43,7 @@ struct JoyMapping
 {
     JoyMapping();
 
-	TCHAR strModule[MAX_PATH];
-	TCHAR strWndClass[MAX_PATH];
-	TCHAR strWndText[MAX_PATH];
+    WndSpec spec;
 	JoyMappingButton joyMappingButton[XINPUT_MAX_BUTTONS];
     JoyMappingThumbType joyMappingThumb[JMT_MAX];
 };
