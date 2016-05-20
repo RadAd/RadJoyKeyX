@@ -281,7 +281,7 @@ bool Update(QUERY_USER_NOTIFICATION_STATE& notifyStateOld)
 	return false;
 }
 
-const JoyMapping& GetWndJoyMapping(const JoyX& joyx)
+const JoyMapping& GetWndJoyMapping(const JoyX& joyx, std::wstring& name)
 {
     //DebugOut(_T("\n  Find: %s\n"), joyx.wndInfoFG.strModule);
     for (auto it = joyx.joyMappingOther.begin(); it != joyx.joyMappingOther.end(); ++it)
@@ -290,11 +290,13 @@ const JoyMapping& GetWndJoyMapping(const JoyX& joyx)
         //DebugOut(_T("    Search: %s\n"), thisJoyMapping.strModule);
         if (IsWnd(joyx.wndInfoFG.spec, thisJoyMapping.spec))
         {
+            name = it->first;
             //DebugOut(_T("    Found: %s\n"), thisJoyMapping.strModule);
             return thisJoyMapping;
         }
     }
-    auto it = joyx.joyMappingOther.find(DEFAULT_MAPPING);
+    name = DEFAULT_MAPPING;
+    auto it = joyx.joyMappingOther.find(name);
     //ASSERT(it != joyx.joyMappingOther.end());
     return it->second;
 }
@@ -309,7 +311,8 @@ JoystickRet DoJoystick(JoyX& joyx)
     bWindowChanged = Update(joyx.wndInfoFG) || bWindowChanged;
     bWindowChanged = Update(joyx.notifyState) || bWindowChanged;
 
-    const JoyMapping& wndJoyMapping = GetWndJoyMapping(joyx);
+    std::wstring nameMapping;
+    const JoyMapping& wndJoyMapping = GetWndJoyMapping(joyx, nameMapping);
     
 	{
 		bool bEnabled = !joyx.wndInfoFG.bUsesXinput || joyx.notifyState >= QUNS_ACCEPTS_NOTIFICATIONS || &wndJoyMapping != &joyx.joyMappingOther[DEFAULT_MAPPING];
@@ -330,7 +333,7 @@ JoystickRet DoJoystick(JoyX& joyx)
 		TCHAR* exe = _tcsrchr(joyx.wndInfoFG.spec.strModule, _T('\\'));
 		exe = exe == nullptr ? joyx.wndInfoFG.spec.strModule : exe + 1;
 		//DebugOut(_T("Module: 0x%x %s\n"), (UINT)hWndFG, exe);
-		DebugOut(_T("%c %s \"%s\"\n"), (joyx.bEnabled ? '+' : '-'), exe, joyx.wndInfoFG.spec.strWndText);
+		DebugOut(_T("%c %s \"%s\"\n"), (joyx.bEnabled ? '+' : '-'), exe, nameMapping);
 	}
 
     for (int j = 0; j < XUSER_MAX_COUNT; ++j)
