@@ -81,7 +81,7 @@ bool SendKey(WORD wScan, bool bDown, bool* keyDown)
 		bSend = keyDown[ip.ki.wVk];
 	keyDown[ip.ki.wVk] = bDown;
 
-#if 1 //_DEBUG
+#if 0 //_DEBUG
 	if (bSend)
 	{
 		switch (ip.type)
@@ -281,9 +281,9 @@ bool Update(QUERY_USER_NOTIFICATION_STATE& notifyStateOld)
 const JoyMapping& GetWndJoyMapping(const JoyX& joyx)
 {
     //DebugOut(_T("\n  Find: %s\n"), joyx.wndInfoFG.strModule);
-    for (int i = 0; i < joyx.joyMappingOtherCount; ++i)
+    for (auto it = joyx.joyMappingOther.begin(); it != joyx.joyMappingOther.end(); ++it)
     {
-        const JoyMapping& thisJoyMapping = joyx.joyMappingOther[i];
+        const JoyMapping& thisJoyMapping = it->second;
         //DebugOut(_T("    Search: %s\n"), thisJoyMapping.strModule);
         if (IsWnd(joyx.wndInfoFG, thisJoyMapping.strModule, thisJoyMapping.strWndClass, thisJoyMapping.strWndText))
         {
@@ -578,22 +578,22 @@ JoyMappingThumbType GetThumbType(LPCWSTR s)
     else return JMTT_NONE;
 }
 
-void Clean(JoyMapping& joyMapping)
+JoyMapping::JoyMapping()
 {
-    _tcscpy_s(joyMapping.strModule, _T(""));
-    _tcscpy_s(joyMapping.strWndClass, _T(""));
-    _tcscpy_s(joyMapping.strWndText, _T(""));
+    _tcscpy_s(strModule, _T(""));
+    _tcscpy_s(strWndClass, _T(""));
+    _tcscpy_s(strWndText, _T(""));
 
     for (int b = 0; b < XINPUT_MAX_BUTTONS; ++b)
     {
-        JoyMappingButton& button = joyMapping.joyMappingButton[b];
+        JoyMappingButton& button = joyMappingButton[b];
         button.type = JMBT_NONE;
         button.keys[0] = 0;
     }
 
     for (int t = 0; t < JMT_MAX; ++t)
     {
-        JoyMappingThumbType& thumb = joyMapping.joyMappingThumb[t];
+        JoyMappingThumbType& thumb = joyMappingThumb[t];
         thumb = JMTT_NONE;
     }
 }
@@ -689,7 +689,7 @@ void Init(JoyX& joyx)
 	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] =		{ JMBT_KEYS, { VK_VOLUME_DOWN, 0 } };
     
 	{
-		JoyMapping& joyMappingMedia = joyx.joyMappingOther[joyx.joyMappingOtherCount++];
+		JoyMapping& joyMappingMedia = joyx.joyMappingOther[L"MediaPlayer"];
         joyMappingMedia = joyx.joyMapping;
 		_tcscpy_s(joyMappingMedia.strModule, _T("*\\mpc-hc64.exe"));
 		_tcscpy_s(joyMappingMedia.strWndClass, _T("*"));
@@ -701,7 +701,7 @@ void Init(JoyX& joyx)
 	}
 
 	{
-		JoyMapping& joyMappingBrowser = joyx.joyMappingOther[joyx.joyMappingOtherCount++];
+		JoyMapping& joyMappingBrowser = joyx.joyMappingOther[L"Browser"];
         joyMappingBrowser = joyx.joyMapping;
 		_tcscpy_s(joyMappingBrowser.strModule, _T("*\\ApplicationFrameHost.exe"));
 		_tcscpy_s(joyMappingBrowser.strWndClass, _T("ApplicationFrameWindow"));
@@ -718,8 +718,7 @@ void Init(JoyX& joyx)
         DWORD l = ARRAYSIZE(n);
         if (RegEnumKeyEx(hMappingKey, i, n, &l, NULL, NULL, NULL, NULL) != ERROR_SUCCESS)
             break;
-        JoyMapping& joyMapping = joyx.joyMappingOther[joyx.joyMappingOtherCount++];
-        Clean(joyMapping);
+        JoyMapping& joyMapping = joyx.joyMappingOther[n];
         LoadFromRegistry(hMappingKey, n, joyMapping);
         ++i;
     }

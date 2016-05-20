@@ -1,5 +1,8 @@
 #pragma once
 
+#include <map>
+#include <string>
+
 #define XINPUT_MAX_BUTTONS	   16
 
 enum JoyMappingButtonType { JMBT_NONE, JMBT_KEYS, JMBT_COMMAND };
@@ -33,6 +36,8 @@ struct JoyMappingButton
 
 struct JoyMapping
 {
+    JoyMapping();
+
 	TCHAR strModule[MAX_PATH];
 	TCHAR strWndClass[MAX_PATH];
 	TCHAR strWndText[MAX_PATH];
@@ -55,8 +60,8 @@ struct JoyX
 	WORD altKey;
 	JoyMapping joyMapping;
 	JoyMapping joyMappingAlt;
-	JoyMapping joyMappingOther[10];
-	int joyMappingOtherCount;
+	std::map<std::wstring, JoyMapping> joyMappingOther;
+
 	JoyMappingLast joyLast;
 	bool keyDown[0xFF];
 };
