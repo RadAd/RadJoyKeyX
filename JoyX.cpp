@@ -81,7 +81,7 @@ bool SendKey(WORD wScan, bool bDown, bool* keyDown)
 		bSend = keyDown[ip.ki.wVk];
 	keyDown[ip.ki.wVk] = bDown;
 
-#if _DEBUG
+#if 1 //_DEBUG
 	if (bSend)
 	{
 		switch (ip.type)
@@ -287,7 +287,7 @@ const JoyMapping& GetWndJoyMapping(const JoyX& joyx)
         //DebugOut(_T("    Search: %s\n"), thisJoyMapping.strModule);
         if (IsWnd(joyx.wndInfoFG, thisJoyMapping.strModule, thisJoyMapping.strWndClass, thisJoyMapping.strWndText))
         {
-            DebugOut(_T("    Found: %s\n"), thisJoyMapping.strModule);
+            //DebugOut(_T("    Found: %s\n"), thisJoyMapping.strModule);
             return thisJoyMapping;
         }
     }
@@ -457,9 +457,9 @@ JoystickRet DoJoystick(JoyX& joyx)
                     case JMTT_WASD:
                         {
                             bool bSend = false;
-                            if (pf.x < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
+                            if (pf.x < -0.1)
                                 bSend |= SendKey('A', true, joyx.keyDown);
-                            else if (pf.x > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
+                            else if (pf.x > 0.1)
                                 bSend |= SendKey('D', true, joyx.keyDown);
                             else
                             {
@@ -467,14 +467,14 @@ JoystickRet DoJoystick(JoyX& joyx)
                                 bSend |= SendKey('D', false, joyx.keyDown);
                             }
 
-                            if (pf.y < -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
-                                bSend |= SendKey('W', true, joyx.keyDown);
-                            else if (pf.y > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
+                            if (pf.y < -0.1)
                                 bSend |= SendKey('S', true, joyx.keyDown);
+                            else if (pf.y > 0.1)
+                                bSend |= SendKey('W', true, joyx.keyDown);
                             else
                             {
-                                bSend |= SendKey('W', false, joyx.keyDown);
                                 bSend |= SendKey('S', false, joyx.keyDown);
+                                bSend |= SendKey('W', false, joyx.keyDown);
                             }
                             if (bSend)
                                 joyx.joyLast = JML_KEYBOARD;
@@ -491,8 +491,178 @@ JoystickRet DoJoystick(JoyX& joyx)
     return ret;
 }
 
+LPCWSTR GetButtonName(int b)
+{
+    switch (b)
+    {
+    case XINPUT_GAMEPAD_DPAD_UP: return TEXT("DPadUp");
+    case XINPUT_GAMEPAD_DPAD_DOWN: return TEXT("DPadDown");
+    case XINPUT_GAMEPAD_DPAD_LEFT: return TEXT("DPadLeft");
+    case XINPUT_GAMEPAD_DPAD_RIGHT: return TEXT("DPadRight");
+    case XINPUT_GAMEPAD_START: return TEXT("Start");
+    case XINPUT_GAMEPAD_BACK: return TEXT("Back");
+    case XINPUT_GAMEPAD_LEFT_THUMB: return TEXT("ThumbButtonLeft");
+    case XINPUT_GAMEPAD_RIGHT_THUMB: return TEXT("ThumbButtonRight");
+    case XINPUT_GAMEPAD_LEFT_SHOULDER: return TEXT("ShoulderLeft");
+    case XINPUT_GAMEPAD_RIGHT_SHOULDER: return TEXT("ShoulderRight");
+    case XINPUT_GAMEPAD_A: return TEXT("GamepadA");
+    case XINPUT_GAMEPAD_B: return TEXT("GamepadB");
+    case XINPUT_GAMEPAD_X: return TEXT("GamepadX");
+    case XINPUT_GAMEPAD_Y: return TEXT("GamepadY");
+    default: return nullptr;
+    }
+}
+
+LPCWSTR GetThumbName(JoyThumb t)
+{
+    switch (t)
+    {
+    case JMT_LEFT: return TEXT("ThumbLeft");
+    case JMT_RIGHT: return TEXT("ThumbRight");
+    default: return nullptr;
+    }
+}
+
+bool LoadRegString(HKEY hKey, LPCWSTR lpValue, LPWSTR str, DWORD nLength, LPCWSTR def)
+{
+    DWORD nSize = nLength * sizeof(TCHAR);
+    if (RegGetValue(hKey, NULL, lpValue, RRF_RT_REG_SZ, NULL, str, &nSize) == ERROR_SUCCESS)
+    {
+        return true;
+    }
+    else
+    {
+        _tcscpy_s(str, nLength, def);
+        return false;
+    }
+
+}
+
+bool is(LPCWSTR start, LPCWSTR end, LPCWSTR compare)
+{
+    size_t l = _tcsclen(compare);
+    return (end - start) == l && _tcsncicmp(start, compare, l) == 0;
+}
+
+WORD GetButton(LPCWSTR start, LPCWSTR end)
+{
+         if (is(start, end, TEXT("LBUTTON")))   return VK_LBUTTON;
+    else if (is(start, end, TEXT("RBUTTON")))   return VK_RBUTTON;
+    else if (is(start, end, TEXT("MBUTTON")))   return VK_MBUTTON;
+    else if (is(start, end, TEXT("RETURN")))    return VK_RETURN;
+    else if (is(start, end, TEXT("SHIFT")))     return VK_SHIFT;
+    else if (is(start, end, TEXT("CONTROL")))   return VK_CONTROL;
+    else if (is(start, end, TEXT("ALT")))       return VK_MENU;
+    else if (is(start, end, TEXT("ESCAPE")))    return VK_ESCAPE;
+    else if (is(start, end, TEXT("SPACE")))     return VK_SPACE;
+    else if (is(start, end, TEXT("END")))       return VK_END;
+    else if (is(start, end, TEXT("HOME")))      return VK_HOME;
+    else if (is(start, end, TEXT("LEFT")))      return VK_LEFT;
+    else if (is(start, end, TEXT("UP")))        return VK_UP;
+    else if (is(start, end, TEXT("RIGHT")))     return VK_RIGHT;
+    else if (is(start, end, TEXT("DOWN")))      return VK_DOWN;
+    else if (is(start, end, TEXT("LWIN")))      return VK_LWIN;
+    else if (is(start, end, TEXT("RWIN")))      return VK_RWIN;
+    else if (is(start, end, TEXT("APPS")))      return VK_APPS;
+    else if (is(start, end, TEXT("BACK")))      return VK_BACK;
+    else if (is(start, end, TEXT("TAB")))       return VK_TAB;
+    // TODO add VK_BROWSER_*, VK_VOLUME_*, VK_MEDIA_*
+    else return 0;
+}
+
+JoyMappingThumbType GetThumbType(LPCWSTR s)
+{
+         if (_tcsicmp(s, TEXT("Mouse")) == 0)    return JMTT_MOUSE;
+    else if (_tcsicmp(s, TEXT("Scroll")) == 0)   return JMTT_SCROLL;
+    else if (_tcsicmp(s, TEXT("WASD")) == 0)     return JMTT_WASD;
+    else return JMTT_NONE;
+}
+
+void Clean(JoyMapping& joyMapping)
+{
+    _tcscpy_s(joyMapping.strModule, _T(""));
+    _tcscpy_s(joyMapping.strWndClass, _T(""));
+    _tcscpy_s(joyMapping.strWndText, _T(""));
+
+    for (int b = 0; b < XINPUT_MAX_BUTTONS; ++b)
+    {
+        JoyMappingButton& button = joyMapping.joyMappingButton[b];
+        button.type = JMBT_NONE;
+        button.keys[0] = 0;
+    }
+
+    for (int t = 0; t < JMT_MAX; ++t)
+    {
+        JoyMappingThumbType& thumb = joyMapping.joyMappingThumb[t];
+        thumb = JMTT_NONE;
+    }
+}
+
+bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
+{
+    HKEY hKey = NULL;
+    if (RegOpenKey(hParent, lpSubKey, &hKey) == ERROR_SUCCESS)
+    {
+        LoadRegString(hKey, L"Module", joyMapping.strModule, ARRAYSIZE(joyMapping.strModule), _T(""));
+        LoadRegString(hKey, L"Class", joyMapping.strWndClass, ARRAYSIZE(joyMapping.strWndClass), _T("*"));
+        LoadRegString(hKey, L"Title", joyMapping.strWndText, ARRAYSIZE(joyMapping.strWndText), _T("*"));
+
+        TCHAR strTemp[ARRAYSIZE(JoyMappingButton::keys)] = L"";
+        for (int b = 0; b < XINPUT_MAX_BUTTONS; ++b)
+        {
+            LPCWSTR n = GetButtonName(1 << b);
+            JoyMappingButton& button = joyMapping.joyMappingButton[b];
+            if (LoadRegString(hKey, n, strTemp, ARRAYSIZE(strTemp), _T("")))
+            {
+                if (_tcscmp(strTemp, TEXT("")) == 0)
+                {
+                    button.type = JMBT_NONE;
+                    button.keys[0] = 0;
+                }
+                else
+                {
+                    button.type = JMBT_KEYS;
+                    const TCHAR* strParseIn = strTemp;
+                    WORD* strParseOut = button.keys;
+                    while (*strParseIn != TEXT('\0'))
+                    {
+                        const TCHAR* end = nullptr;
+                        if (*strParseIn == TEXT('[') && (end = _tcsrchr(strParseIn + 1, _T(']'))) != nullptr)
+                        {
+                            *strParseOut = GetButton(strParseIn + 1, end);
+                            strParseIn = end;
+                        }
+                        else
+                            *strParseOut = *strParseIn;
+                        ++strParseOut;
+                        ++strParseIn;
+                    }
+                    *strParseOut = 0;
+                }
+            }
+        }
+
+        for (int t = 0; t < JMT_MAX; ++t)
+        {
+            LPCWSTR n = GetThumbName(static_cast<JoyThumb>(t));
+            if (LoadRegString(hKey, n, strTemp, ARRAYSIZE(strTemp), _T("")))
+            {
+                JoyMappingThumbType& thumb = joyMapping.joyMappingThumb[t];
+                thumb = GetThumbType(strTemp);
+            }
+        }
+
+        RegCloseKey(hKey);
+        return true;
+    }
+    return false;
+}
+
 void Init(JoyX& joyx)
 {
+    HKEY hMappingKey = NULL;
+    RegOpenKey(HKEY_CURRENT_USER, L"SOFTWARE\\RadSoft\\RadJoyKeyX\\Mapping", &hMappingKey);
+
     joyx.joyMapping.joyMappingThumb[JMT_LEFT] = JMTT_MOUSE;
     joyx.joyMapping.joyMappingThumb[JMT_RIGHT] = JMTT_SCROLL;
 	joyx.joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =					{ JMBT_COMMAND, JMC_BUTTON };
@@ -530,13 +700,6 @@ void Init(JoyX& joyx)
 		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
 	}
 
-    if (false)
-    {
-        JoyMapping& joyMappingMedia = joyx.joyMappingOther[joyx.joyMappingOtherCount++];
-        joyMappingMedia = joyx.joyMapping;
-        _tcscpy_s(joyMappingMedia.strModule, _T("*\\devenv.exe"));
-    }
-
 	{
 		JoyMapping& joyMappingBrowser = joyx.joyMappingOther[joyx.joyMappingOtherCount++];
         joyMappingBrowser = joyx.joyMapping;
@@ -548,35 +711,17 @@ void Init(JoyX& joyx)
 		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { VK_BROWSER_FORWARD, 0 } };
 	}
 
-	{
-		JoyMapping& joyMappingInvisibleInc = joyx.joyMappingOther[joyx.joyMappingOtherCount++];
-		_tcscpy_s(joyMappingInvisibleInc.strModule, _T("*\\invisibleinc.exe"));
-		_tcscpy_s(joyMappingInvisibleInc.strWndClass, _T("*"));
-		_tcscpy_s(joyMappingInvisibleInc.strWndText, _T("*"));
-        joyMappingInvisibleInc.joyMappingThumb[JMT_LEFT] = JMTT_MOUSE;
-		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =              { JMBT_KEYS,{ VK_LBUTTON, 0 } };
-		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =			  { JMBT_KEYS, { VK_SPACE, 0 } };
-		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS,{ VK_MENU, 0 } };
-		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS,{ VK_TAB, 0 } };
-		joyMappingInvisibleInc.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_THUMB)] =     { JMBT_KEYS,{ VK_RETURN, 0 } };
-	}
-
+    int i = 0;
+    while (true)
     {
-        JoyMapping& joyMappingWitcher= joyx.joyMappingOther[joyx.joyMappingOtherCount++];
-        _tcscpy_s(joyMappingWitcher.strModule, _T("*\\witcher.exe"));
-        _tcscpy_s(joyMappingWitcher.strWndClass, _T("*"));
-        _tcscpy_s(joyMappingWitcher.strWndText, _T("*"));
-        //_tcscpy_s(joyMappingWitcher.strWndText, _T("The Witcher (*"));
-        joyMappingWitcher.joyMappingThumb[JMT_LEFT] = JMTT_WASD;
-        joyMappingWitcher.joyMappingThumb[JMT_RIGHT] = JMTT_MOUSE;
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =              { JMBT_KEYS, { VK_LBUTTON, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =              { JMBT_KEYS, { VK_RBUTTON, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =              { JMBT_KEYS, { VK_TAB, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { 'Q', 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { 'E', 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_THUMB)] =     { JMBT_KEYS, { 'F', 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =          { JMBT_KEYS, { VK_ESCAPE, 0 } };
-        joyMappingWitcher.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =           { JMBT_KEYS, { VK_SPACE, 0 } };
+        TCHAR n[100];
+        DWORD l = ARRAYSIZE(n);
+        if (RegEnumKeyEx(hMappingKey, i, n, &l, NULL, NULL, NULL, NULL) != ERROR_SUCCESS)
+            break;
+        JoyMapping& joyMapping = joyx.joyMappingOther[joyx.joyMappingOtherCount++];
+        Clean(joyMapping);
+        LoadFromRegistry(hMappingKey, n, joyMapping);
+        ++i;
     }
 
     joyx.altKey = XINPUT_GAMEPAD_BACK;
@@ -585,6 +730,8 @@ void Init(JoyX& joyx)
 
 	HMODULE hXInput = FindModule(-1, _T("*\\xinput*.dll"));
 	joyx.XInputPowerOffController = reinterpret_cast<XInputPowerOffController_t>(GetProcAddress(hXInput, (LPCSTR)103));
+
+    RegCloseKey(hMappingKey);
 }
 
 void AppendBattInfo(TCHAR* s, int length, const XINPUT_BATTERY_INFORMATION* joyBattery)
