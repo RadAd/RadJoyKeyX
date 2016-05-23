@@ -3,10 +3,11 @@
 #include "Utils.h"
 #include "WinUtils.h"
 #include <Shlwapi.h>
+#include <math.h>
 
 #define KF_SCANKEY	   0x0400
 
-#define MOUSE_SENSITIVITY 3
+#define MOUSE_SENSITIVITY 2
 #define MOUSE_SPEED 5
 
 #define DEFAULT_MAPPING L"Default"
@@ -14,8 +15,8 @@
 inline POINTFLOAT Normalize(SHORT x, SHORT y, SHORT deadZone)
 {
 	return {
-		Power(Normalize(x, deadZone), MOUSE_SENSITIVITY),
-		Power(Normalize(y, deadZone), MOUSE_SENSITIVITY)
+		std::copysignf(Power(std::fabs(Normalize(x, deadZone)), MOUSE_SENSITIVITY), x),
+        std::copysignf(Power(std::fabs(Normalize(y, deadZone)), MOUSE_SENSITIVITY), y)
 	};
 }
 
@@ -449,6 +450,8 @@ JoystickRet DoJoystick(JoyX& joyx)
                 {
                     JoyThumb t = static_cast<JoyThumb>(i);
                     POINTFLOAT pf = Normalize(GetThumbX(joyState, t), GetThumbY(joyState, t), XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+                    //if (t == JMT_RIGHT)
+                        //DebugOut(L"Thumb %f %f\n", pf.x, pf.y);
 
                     switch (joyMapping.joyMappingThumb[i])
                     {
