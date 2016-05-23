@@ -220,9 +220,9 @@ bool DoButtonUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD bu
 bool IsWnd(const WndSpec& wnd, const WndSpec& spec)
 {
     bool match = true;
-    match &= PathMatchSpec(wnd.strModule, spec.strModule) != FALSE;
-    match &= PathMatchSpec(wnd.strWndClass, spec.strWndClass) != FALSE;
-    match &= PathMatchSpec(wnd.strWndText, spec.strWndText) != FALSE;
+    match &= spec.strModule[0] != L'\0' && PathMatchSpec(wnd.strModule, spec.strModule) != FALSE;
+    match &= spec.strWndClass[0] != L'\0' && PathMatchSpec(wnd.strWndClass, spec.strWndClass) != FALSE;
+    match &= spec.strWndText[0] != L'\0' && PathMatchSpec(wnd.strWndText, spec.strWndText) != FALSE;
     return match;
 }
 
@@ -284,15 +284,15 @@ bool Update(QUERY_USER_NOTIFICATION_STATE& notifyStateOld)
 
 const JoyMapping& GetWndJoyMapping(const JoyX& joyx, std::wstring& name)
 {
-    //DebugOut(_T("\n  Find: %s\n"), joyx.wndInfoFG.strModule);
+    //DebugOut(_T("\n  Find: %s\n"), joyx.wndInfoFG.spec.strModule);
     for (auto it = joyx.joyMappingOther.begin(); it != joyx.joyMappingOther.end(); ++it)
     {
         const JoyMapping& thisJoyMapping = it->second;
-        //DebugOut(_T("    Search: %s\n"), thisJoyMapping.strModule);
+        //DebugOut(_T("    Search: %s %s\n"), it->first.c_str(), thisJoyMapping.spec.strModule);
         if (IsWnd(joyx.wndInfoFG.spec, thisJoyMapping.spec))
         {
             name = it->first;
-            //DebugOut(_T("    Found: %s\n"), thisJoyMapping.strModule);
+            //DebugOut(_T("    Found: %s %s\n"), it->first.c_str(), thisJoyMapping.spec.strModule);
             return thisJoyMapping;
         }
     }
