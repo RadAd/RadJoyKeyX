@@ -11,6 +11,7 @@
 #define MOUSE_SPEED 5
 
 #define DEFAULT_MAPPING L"Default"
+#define ALT_MAPPING L"Alt"
 
 inline POINTFLOAT Normalize(SHORT x, SHORT y, SHORT deadZone)
 {
@@ -358,7 +359,7 @@ JoystickRet DoJoystick(JoyX& joyx)
 		r = XInputGetState(j, &joyState);
 		if (r == ERROR_SUCCESS)
 		{
-            const JoyMapping& joyMapping = joyState.Gamepad.wButtons & joyx.altKey ? joyx.joyMappingAlt : wndJoyMapping;
+            const JoyMapping& joyMapping = joyState.Gamepad.wButtons & joyx.altKey ? joyx.joyMapping[ALT_MAPPING] : wndJoyMapping;
 
             if (joyState.dwPacketNumber != joyx.joyState[j].dwPacketNumber)
 			{
@@ -695,6 +696,14 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
         //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =		  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
         //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =      { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
     }
+    else if (_tcsicmp(lpSubKey, ALT_MAPPING) == 0)
+    {
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] = { JMBT_KEYS, { VK_MEDIA_STOP, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] = { JMBT_COMMAND, JMC_TURN_OFF };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] = { JMBT_KEYS, { VK_VOLUME_MUTE, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] = { JMBT_KEYS, { VK_VOLUME_UP, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] = { JMBT_KEYS, { VK_VOLUME_DOWN, 0 } };
+    }
     else
     {
         DebugOut(L"Error: cant't find mapping %s\n", lpSubKey);
@@ -709,15 +718,9 @@ void LoadMapping(JoyX& joyx)
 
     joyx.joyMapping.clear();
     LoadFromRegistry(hMappingKey, DEFAULT_MAPPING, joyx.joyMapping[DEFAULT_MAPPING]);
+    LoadFromRegistry(hMappingKey, ALT_MAPPING, joyx.joyMapping[ALT_MAPPING]);
 
     joyx.altKey = XINPUT_GAMEPAD_BACK;
-
-    // TODO Clear joyx.joyMappingAlt
-    joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] = { JMBT_KEYS, { VK_MEDIA_STOP, 0 } };
-    joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] = { JMBT_COMMAND, JMC_TURN_OFF };
-    joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] = { JMBT_KEYS, { VK_VOLUME_MUTE, 0 } };
-    joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] = { JMBT_KEYS, { VK_VOLUME_UP, 0 } };
-    joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] = { JMBT_KEYS, { VK_VOLUME_DOWN, 0 } };
 
     int i = 0;
     while (true)
