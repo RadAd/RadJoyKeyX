@@ -7,7 +7,7 @@
 
 enum JoyMappingButtonType { JMBT_NONE, JMBT_KEYS, JMBT_COMMAND };
 enum JoyMappingThumbType { JMTT_NONE, JMTT_MOUSE, JMTT_SCROLL, JMTT_WASD };
-enum JoyMappingCommand { JMC_TURN_OFF, JMC_BUTTON };
+enum JoyMappingCommand { JMC_TURN_OFF, JMC_BUTTON, JMC_ALT };
 enum JoyMappingLast { JML_MOUSE, JML_KEYBOARD };
 enum JoyThumb { JMT_LEFT, JMT_RIGHT, JMT_MAX };
 
@@ -60,7 +60,6 @@ struct JoyX
 	XINPUT_STATE joyState[XUSER_MAX_COUNT];
 	XINPUT_BATTERY_INFORMATION joyBattery[XUSER_MAX_COUNT];
 
-	WORD altKey;
 	std::map<std::wstring, JoyMapping> joyMapping;
 
 	JoyMappingLast joyLast;

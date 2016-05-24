@@ -359,7 +359,21 @@ JoystickRet DoJoystick(JoyX& joyx)
 		r = XInputGetState(j, &joyState);
 		if (r == ERROR_SUCCESS)
 		{
-            const JoyMapping& joyMapping = joyState.Gamepad.wButtons & joyx.altKey ? joyx.joyMapping[ALT_MAPPING] : wndJoyMapping;
+            const JoyMapping* joyMappingAlt = nullptr;
+            for (int b = 0; b < XINPUT_MAX_BUTTONS; ++b)
+            {
+                const JoyMappingButton& joyMappingButton = wndJoyMapping.joyMappingButton[b];
+                const WORD mask = 1 << b;
+                if (joyMappingButton.type == JMBT_COMMAND && joyMappingButton.command == JMC_ALT)
+                {
+                    if (joyx.bEnabled && IsOnButtonDown(joyState, joyx.joyState[j], mask))
+                    {
+                        joyMappingAlt = &joyx.joyMapping[ALT_MAPPING];
+                    }
+                }
+            }
+
+            const JoyMapping& joyMapping = joyMappingAlt != nullptr ? *joyMappingAlt : wndJoyMapping;
 
             if (joyState.dwPacketNumber != joyx.joyState[j].dwPacketNumber)
 			{
@@ -692,7 +706,7 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
         joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_LEFT)] = { JMBT_KEYS, { VK_LEFT, 0 } };
         joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_RIGHT)] = { JMBT_KEYS, { VK_RIGHT, 0 } };
         joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] = { JMBT_KEYS, { VK_LWIN, 0 } };
-        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =				  { JMBT_KEYS, { VK_CONTROL, VK_MENU, VK_TAB, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =				  { JMBT_COMMAND, { JMC_ALT, 0 } };
         //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =		  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
         //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =      { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
     }
@@ -719,8 +733,6 @@ void LoadMapping(JoyX& joyx)
     joyx.joyMapping.clear();
     LoadFromRegistry(hMappingKey, DEFAULT_MAPPING, joyx.joyMapping[DEFAULT_MAPPING]);
     LoadFromRegistry(hMappingKey, ALT_MAPPING, joyx.joyMapping[ALT_MAPPING]);
-
-    joyx.altKey = XINPUT_GAMEPAD_BACK;
 
     int i = 0;
     while (true)
