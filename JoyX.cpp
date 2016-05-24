@@ -402,12 +402,12 @@ JoystickRet DoJoystick(JoyX& joyx)
 				{
 					const JoyMappingButton& joyMappingButton = joyMapping.joyMappingButton[b];
 					const WORD mask = 1 << b;
+                    // if (joyCapabilities.Gamepad.wButtons & mask)
 					switch (joyMappingButton.type)
 					{
 					case JMBT_KEYS:
-						if (joyx.bEnabled && (joyCapabilities.Gamepad.wButtons & mask))
-							if (DoButtonDown(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown))
-								joyx.joyLast = JML_KEYBOARD;
+						if (joyx.bEnabled && DoButtonDown(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown))
+							joyx.joyLast = JML_KEYBOARD;
 						DoButtonUp(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown);
 						break;
 
@@ -422,25 +422,19 @@ JoystickRet DoJoystick(JoyX& joyx)
                     case JMBT_BUTTON:
                         if (joyx.bEnabled && IsOnButtonDown(joyState, joyx.joyState[j], mask))
                         {
-                            if (joyx.joyLast == JML_MOUSE)
+                            switch (joyx.joyLast)
                             {
-                                SendKey(VK_LBUTTON, true, joyx.keyDown);
-                            }
-                            else if (joyx.joyLast == JML_KEYBOARD)
-                            {
-                                SendKey(VK_RETURN, true, joyx.keyDown);
+                            case JML_MOUSE: SendKey(VK_LBUTTON, true, joyx.keyDown); break;
+                            case JML_KEYBOARD: SendKey(VK_RETURN, true, joyx.keyDown); break;
                             }
                         }
 
                         if (IsOnButtonUp(joyState, joyx.joyState[j], mask))
                         {
-                            if (joyx.joyLast == JML_MOUSE)
+                            switch (joyx.joyLast)
                             {
-                                SendKey(VK_LBUTTON, false, joyx.keyDown);
-                            }
-                            else if (joyx.joyLast == JML_KEYBOARD)
-                            {
-                                SendKey(VK_RETURN, false, joyx.keyDown);
+                            case JML_MOUSE: SendKey(VK_LBUTTON, false, joyx.keyDown); break;
+                            case JML_KEYBOARD: SendKey(VK_RETURN, false, joyx.keyDown); break;
                             }
                         }
                         break;
