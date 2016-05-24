@@ -141,6 +141,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
 
+            case ID_FILE_RELOAD:
+                LoadMapping(g_JoyX);
+                break;
+
             case IDM_EXIT:
                 DestroyWindow(hWnd);
                 break;

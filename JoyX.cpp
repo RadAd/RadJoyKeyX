@@ -285,7 +285,7 @@ bool Update(QUERY_USER_NOTIFICATION_STATE& notifyStateOld)
 const JoyMapping& GetWndJoyMapping(const JoyX& joyx, std::wstring& name)
 {
     //DebugOut(_T("\n  Find: %s\n"), joyx.wndInfoFG.spec.strModule);
-    for (auto it = joyx.joyMappingOther.begin(); it != joyx.joyMappingOther.end(); ++it)
+    for (auto it = joyx.joyMapping.begin(); it != joyx.joyMapping.end(); ++it)
     {
         const JoyMapping& thisJoyMapping = it->second;
         //DebugOut(_T("    Search: %s %s\n"), it->first.c_str(), thisJoyMapping.spec.strModule);
@@ -297,8 +297,8 @@ const JoyMapping& GetWndJoyMapping(const JoyX& joyx, std::wstring& name)
         }
     }
     name = DEFAULT_MAPPING;
-    auto it = joyx.joyMappingOther.find(name);
-    //ASSERT(it != joyx.joyMappingOther.end());
+    auto it = joyx.joyMapping.find(name);
+    //ASSERT(it != joyx.joyMapping.end());
     return it->second;
 }
 
@@ -316,7 +316,7 @@ JoystickRet DoJoystick(JoyX& joyx)
     const JoyMapping& wndJoyMapping = GetWndJoyMapping(joyx, nameMapping);
     
 	{
-		bool bEnabled = !joyx.wndInfoFG.bUsesXinput || joyx.notifyState >= QUNS_ACCEPTS_NOTIFICATIONS || &wndJoyMapping != &joyx.joyMappingOther[DEFAULT_MAPPING];
+		bool bEnabled = !joyx.wndInfoFG.bUsesXinput || joyx.notifyState >= QUNS_ACCEPTS_NOTIFICATIONS || &wndJoyMapping != &joyx.joyMapping[DEFAULT_MAPPING];
 		// TODO Enable if Steam
 		if (bEnabled != joyx.bEnabled)
 		{
@@ -702,43 +702,22 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
     return false;
 }
 
-void Init(JoyX& joyx)
+void LoadMapping(JoyX& joyx)
 {
     HKEY hMappingKey = NULL;
     RegOpenKey(HKEY_CURRENT_USER, L"SOFTWARE\\RadSoft\\RadJoyKeyX\\Mapping", &hMappingKey);
 
-    LoadFromRegistry(hMappingKey, DEFAULT_MAPPING, joyx.joyMappingOther[DEFAULT_MAPPING]);
+    joyx.joyMapping.clear();
+    LoadFromRegistry(hMappingKey, DEFAULT_MAPPING, joyx.joyMapping[DEFAULT_MAPPING]);
 
-	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =				{ JMBT_KEYS, { VK_MEDIA_STOP, 0 } };
-	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =			{ JMBT_COMMAND, JMC_TURN_OFF };
-	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =	{ JMBT_KEYS, { VK_VOLUME_MUTE, 0 } };
-	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] =			{ JMBT_KEYS, { VK_VOLUME_UP, 0 } };
-	joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] =		{ JMBT_KEYS, { VK_VOLUME_DOWN, 0 } };
-    
-    if (false)
-	{
-		JoyMapping& joyMappingMedia = joyx.joyMappingOther[L"MediaPlayer"];
-        joyMappingMedia = joyx.joyMappingOther[DEFAULT_MAPPING];
-		_tcscpy_s(joyMappingMedia.spec.strModule, _T("*\\mpc-hc64.exe"));
-		_tcscpy_s(joyMappingMedia.spec.strWndClass, _T("*"));
-		_tcscpy_s(joyMappingMedia.spec.strWndText, _T("*"));
-		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =              { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
-		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =              { JMBT_KEYS, { VK_MENU, VK_RETURN, 0 } };
-		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
-		joyMappingMedia.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
-	}
+    joyx.altKey = XINPUT_GAMEPAD_BACK;
 
-    if (false)
-	{
-		JoyMapping& joyMappingBrowser = joyx.joyMappingOther[L"Browser"];
-        joyMappingBrowser = joyx.joyMappingOther[DEFAULT_MAPPING];
-		_tcscpy_s(joyMappingBrowser.spec.strModule, _T("*\\ApplicationFrameHost.exe"));
-		_tcscpy_s(joyMappingBrowser.spec.strWndClass, _T("ApplicationFrameWindow"));
-		_tcscpy_s(joyMappingBrowser.spec.strWndText, _T("*- Microsoft Edge"));
-		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =				 { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
-		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =  { JMBT_KEYS, { VK_BROWSER_BACK, 0 } };
-		joyMappingBrowser.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] = { JMBT_KEYS, { VK_BROWSER_FORWARD, 0 } };
-	}
+    // TODO Clear joyx.joyMappingAlt
+    joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] = { JMBT_KEYS, { VK_MEDIA_STOP, 0 } };
+    joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] = { JMBT_COMMAND, JMC_TURN_OFF };
+    joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] = { JMBT_KEYS, { VK_VOLUME_MUTE, 0 } };
+    joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] = { JMBT_KEYS, { VK_VOLUME_UP, 0 } };
+    joyx.joyMappingAlt.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] = { JMBT_KEYS, { VK_VOLUME_DOWN, 0 } };
 
     int i = 0;
     while (true)
@@ -747,23 +726,26 @@ void Init(JoyX& joyx)
         DWORD l = ARRAYSIZE(n);
         if (RegEnumKeyEx(hMappingKey, i, n, &l, NULL, NULL, NULL, NULL) != ERROR_SUCCESS)
             break;
-        auto it = joyx.joyMappingOther.find(n);
-        if (it == joyx.joyMappingOther.end())
+        auto it = joyx.joyMapping.find(n);
+        if (it == joyx.joyMapping.end())
         {
-            JoyMapping& joyMapping = joyx.joyMappingOther[n];
+            JoyMapping& joyMapping = joyx.joyMapping[n];
             LoadFromRegistry(hMappingKey, n, joyMapping);
         }
         ++i;
     }
 
-    joyx.altKey = XINPUT_GAMEPAD_BACK;
+    RegCloseKey(hMappingKey);
+}
+
+void Init(JoyX& joyx)
+{
+    LoadMapping(joyx);
 
 	joyx.notifyState = QUNS_ACCEPTS_NOTIFICATIONS;
 
 	HMODULE hXInput = FindModule(-1, _T("*\\xinput*.dll"));
 	joyx.XInputPowerOffController = reinterpret_cast<XInputPowerOffController_t>(GetProcAddress(hXInput, (LPCSTR)103));
-
-    RegCloseKey(hMappingKey);
 }
 
 void AppendBattInfo(TCHAR* s, int length, const XINPUT_BATTERY_INFORMATION* joyBattery)

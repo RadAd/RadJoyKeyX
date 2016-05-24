@@ -62,7 +62,7 @@ struct JoyX
 
 	WORD altKey;
 	JoyMapping joyMappingAlt;
-	std::map<std::wstring, JoyMapping> joyMappingOther;
+	std::map<std::wstring, JoyMapping> joyMapping;
 
 	JoyMappingLast joyLast;
 	bool keyDown[0xFF];
@@ -78,5 +78,6 @@ struct JoystickRet
 };
 
 void Init(JoyX& joyx);
+void LoadMapping(JoyX& joyx);
 JoystickRet DoJoystick(JoyX& joyx);
 void AppendBattInfo(TCHAR* s, int length, const XINPUT_BATTERY_INFORMATION* joyBattery);
