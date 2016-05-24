@@ -368,7 +368,7 @@ JoystickRet DoJoystick(JoyX& joyx)
                 {
                     if (joyx.bEnabled && IsOnButtonDown(joyState, joyx.joyState[j], mask))
                     {
-                        joyMappingAlt = &joyx.joyMapping[ALT_MAPPING];
+                        joyMappingAlt = &joyx.joyMapping[joyMappingButton.strMapping];
                     }
                 }
             }
@@ -692,6 +692,7 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
         joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_RIGHT)] = { JMBT_KEYS, { VK_RIGHT, 0 } };
         joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =      { JMBT_KEYS, { VK_LWIN, 0 } };
         joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =       { JMBT_ALT };
+        _tcscpy_s(joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)].strMapping, ALT_MAPPING);
         //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =    { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
         //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =   { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
     }
@@ -717,7 +718,6 @@ void LoadMapping(JoyX& joyx)
 
     joyx.joyMapping.clear();
     LoadFromRegistry(hMappingKey, DEFAULT_MAPPING, joyx.joyMapping[DEFAULT_MAPPING]);
-    LoadFromRegistry(hMappingKey, ALT_MAPPING, joyx.joyMapping[ALT_MAPPING]);
 
     int i = 0;
     while (true)

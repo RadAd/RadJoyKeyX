@@ -30,7 +30,11 @@ struct WndInfo
 struct JoyMappingButton
 {
 	JoyMappingButtonType type;
-	WORD keys[10];
+    union
+    {
+        WORD keys[10];
+        TCHAR strMapping[100];
+    };
 };
 
 struct JoyMapping
