@@ -364,7 +364,7 @@ JoystickRet DoJoystick(JoyX& joyx)
             {
                 const JoyMappingButton& joyMappingButton = wndJoyMapping.joyMappingButton[b];
                 const WORD mask = 1 << b;
-                if (joyMappingButton.type == JMBT_COMMAND && joyMappingButton.command == JMC_ALT)
+                if (joyMappingButton.type == JMBT_ALT)
                 {
                     if (joyx.bEnabled && IsOnButtonDown(joyState, joyx.joyState[j], mask))
                     {
@@ -411,49 +411,40 @@ JoystickRet DoJoystick(JoyX& joyx)
 						DoButtonUp(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown);
 						break;
 
-					case JMBT_COMMAND:
+					case JMBT_TURN_OFF:
                         if (joyx.bEnabled && IsOnButtonDown(joyState, joyx.joyState[j], mask))
                         {
-                            switch (joyMappingButton.command)
-                            {
-                            case JMC_TURN_OFF:
-                                if (joyx.XInputPowerOffController != nullptr)
-                                    joyx.XInputPowerOffController(j);
-                                break;
+                            if (joyx.XInputPowerOffController != nullptr)
+                                joyx.XInputPowerOffController(j);
+                        }
+                        break;
 
-                            case JMC_BUTTON:
-                                if (joyx.joyLast == JML_MOUSE)
-                                {
-                                    SendKey(VK_LBUTTON, true, joyx.keyDown);
-                                }
-                                else if (joyx.joyLast == JML_KEYBOARD)
-                                {
-                                    SendKey(VK_RETURN, true, joyx.keyDown);
-                                }
-                                break;
+                    case JMBT_BUTTON:
+                        if (joyx.bEnabled && IsOnButtonDown(joyState, joyx.joyState[j], mask))
+                        {
+                            if (joyx.joyLast == JML_MOUSE)
+                            {
+                                SendKey(VK_LBUTTON, true, joyx.keyDown);
+                            }
+                            else if (joyx.joyLast == JML_KEYBOARD)
+                            {
+                                SendKey(VK_RETURN, true, joyx.keyDown);
                             }
                         }
 
-						if (IsOnButtonUp(joyState, joyx.joyState[j], mask))
-						{
-							switch (joyMappingButton.command)
-							{
-							case JMC_TURN_OFF:
-								break;
-
-							case JMC_BUTTON:
-								if (joyx.joyLast == JML_MOUSE)
-								{
-									SendKey(VK_LBUTTON, false, joyx.keyDown);
-								}
-								else if (joyx.joyLast == JML_KEYBOARD)
-								{
-									SendKey(VK_RETURN, false, joyx.keyDown);
-								}
-								break;
-							}
-						}
-					}
+                        if (IsOnButtonUp(joyState, joyx.joyState[j], mask))
+                        {
+                            if (joyx.joyLast == JML_MOUSE)
+                            {
+                                SendKey(VK_LBUTTON, false, joyx.keyDown);
+                            }
+                            else if (joyx.joyLast == JML_KEYBOARD)
+                            {
+                                SendKey(VK_RETURN, false, joyx.keyDown);
+                            }
+                        }
+                        break;
+                    }
 				}
 
 				// TODO User override joyx.bEnabled
@@ -697,26 +688,26 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
 
         joyMapping.joyMappingThumb[JMT_LEFT] = JMTT_MOUSE;
         joyMapping.joyMappingThumb[JMT_RIGHT] = JMTT_SCROLL;
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] = { JMBT_COMMAND, JMC_BUTTON };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] = { JMBT_KEYS, { VK_ESCAPE, 0 } };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] = { JMBT_KEYS, { VK_RBUTTON, 0 } };
-        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =					  { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] = { JMBT_KEYS, { VK_UP, 0 } };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] = { JMBT_KEYS, { VK_DOWN, 0 } };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_LEFT)] = { JMBT_KEYS, { VK_LEFT, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =          { JMBT_BUTTON };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =          { JMBT_KEYS, { VK_ESCAPE, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] =          { JMBT_KEYS, { VK_RBUTTON, 0 } };
+        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =          { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] =    { JMBT_KEYS, { VK_UP, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] =  { JMBT_KEYS, { VK_DOWN, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_LEFT)] =  { JMBT_KEYS, { VK_LEFT, 0 } };
         joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_RIGHT)] = { JMBT_KEYS, { VK_RIGHT, 0 } };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] = { JMBT_KEYS, { VK_LWIN, 0 } };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =				  { JMBT_COMMAND, { JMC_ALT, 0 } };
-        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =		  { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
-        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =      { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =      { JMBT_KEYS, { VK_LWIN, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_BACK)] =       { JMBT_ALT };
+        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =    { JMBT_KEYS, { VK_MEDIA_PREV_TRACK, 0 } };
+        //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_RIGHT_SHOULDER)] =   { JMBT_KEYS, { VK_MEDIA_NEXT_TRACK, 0 } };
     }
     else if (_tcsicmp(lpSubKey, ALT_MAPPING) == 0)
     {
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] = { JMBT_KEYS, { VK_MEDIA_STOP, 0 } };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] = { JMBT_COMMAND, JMC_TURN_OFF };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] = { JMBT_KEYS, { VK_VOLUME_MUTE, 0 } };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] = { JMBT_KEYS, { VK_VOLUME_UP, 0 } };
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] = { JMBT_KEYS, { VK_VOLUME_DOWN, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =                { JMBT_KEYS, { VK_MEDIA_STOP, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_START)] =            { JMBT_TURN_OFF };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_LEFT_SHOULDER)] =    { JMBT_KEYS, { VK_VOLUME_MUTE, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_UP)] =          { JMBT_KEYS, { VK_VOLUME_UP, 0 } };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_DPAD_DOWN)] =        { JMBT_KEYS, { VK_VOLUME_DOWN, 0 } };
     }
     else
     {

@@ -5,9 +5,8 @@
 
 #define XINPUT_MAX_BUTTONS	   16
 
-enum JoyMappingButtonType { JMBT_NONE, JMBT_KEYS, JMBT_COMMAND };
+enum JoyMappingButtonType { JMBT_NONE, JMBT_KEYS, JMBT_TURN_OFF, JMBT_BUTTON, JMBT_ALT };
 enum JoyMappingThumbType { JMTT_NONE, JMTT_MOUSE, JMTT_SCROLL, JMTT_WASD };
-enum JoyMappingCommand { JMC_TURN_OFF, JMC_BUTTON, JMC_ALT };
 enum JoyMappingLast { JML_MOUSE, JML_KEYBOARD };
 enum JoyThumb { JMT_LEFT, JMT_RIGHT, JMT_MAX };
 
@@ -31,12 +30,7 @@ struct WndInfo
 struct JoyMappingButton
 {
 	JoyMappingButtonType type;
-
-	union
-	{
-		WORD keys[10];
-		JoyMappingCommand command;
-	};
+	WORD keys[10];
 };
 
 struct JoyMapping
