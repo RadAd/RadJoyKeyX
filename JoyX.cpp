@@ -366,7 +366,7 @@ JoystickRet DoJoystick(JoyX& joyx)
                 const WORD mask = 1 << b;
                 if (joyMappingButton.type == JMBT_ALT)
                 {
-                    if (joyx.bEnabled && IsOnButtonDown(joyState, joyx.joyState[j], mask))
+                    if (joyx.bEnabled && (joyState.Gamepad.wButtons & mask))
                     {
                         joyMappingAlt = &joyx.joyMapping[joyMappingButton.strMapping];
                     }
@@ -718,6 +718,7 @@ void LoadMapping(JoyX& joyx)
 
     joyx.joyMapping.clear();
     LoadFromRegistry(hMappingKey, DEFAULT_MAPPING, joyx.joyMapping[DEFAULT_MAPPING]);
+    LoadFromRegistry(hMappingKey, ALT_MAPPING, joyx.joyMapping[ALT_MAPPING]);
 
     int i = 0;
     while (true)
