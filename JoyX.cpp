@@ -5,7 +5,8 @@
 #include <Shlwapi.h>
 #include <math.h>
 
-#define KF_SCANKEY	   0x0400
+#define KF_SCANKEY      0x0400
+#define VK_BUTTON       0x88 // Currently unassigned
 
 #define MOUSE_SENSITIVITY 2
 #define MOUSE_SPEED 5
@@ -188,14 +189,23 @@ inline bool IsOnButtonUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold
 		&& !(state.Gamepad.wButtons & button));
 }
 
-bool DoButtonDown(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button, const WORD* const keys, bool* keyDown)
+bool DoButtonDown(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button, const WORD* const keys, bool* keyDown, JoyMappingLast joyLast)
 {
 	if (IsOnButtonDown(state, stateold, button))
 	{
 		int k = 0;
 		while (keys[k] != 0)
 		{
-			SendKey(keys[k], true, keyDown);
+            WORD key = keys[k];
+            if (key == VK_BUTTON)
+            {
+                switch (joyLast)
+                {
+                case JML_MOUSE: key = VK_LBUTTON; break;
+                case JML_KEYBOARD: key = VK_RETURN; break;
+                }
+            }
+            SendKey(key, true, keyDown);
 			++k;
 		}
 		return true;
@@ -203,14 +213,23 @@ bool DoButtonDown(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD 
 	return false;
 }
 
-bool DoButtonUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button, const WORD* const keys, bool* keyDown)
+bool DoButtonUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button, const WORD* const keys, bool* keyDown, JoyMappingLast joyLast)
 {
 	if (IsOnButtonUp(state, stateold, button))
 	{
 		int k = 0;
 		while (keys[k] != 0)
 		{
-			SendKey(keys[k], false, keyDown);
+            WORD key = keys[k];
+            if (key == VK_BUTTON)
+            {
+                switch (joyLast)
+                {
+                case JML_MOUSE: key = VK_LBUTTON; break;
+                case JML_KEYBOARD: key = VK_RETURN; break;
+                }
+            }
+            SendKey(key, false, keyDown);
 			++k;
 		}
 		return true;
@@ -406,9 +425,9 @@ JoystickRet DoJoystick(JoyX& joyx)
 					switch (joyMappingButton.type)
 					{
 					case JMBT_KEYS:
-						if (joyx.bEnabled && DoButtonDown(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown))
+						if (joyx.bEnabled && DoButtonDown(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown, joyx.joyLast))
 							joyx.joyLast = JML_KEYBOARD;
-						DoButtonUp(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown);
+						DoButtonUp(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown, joyx.joyLast);
 						break;
 
 					case JMBT_TURN_OFF:
@@ -416,26 +435,6 @@ JoystickRet DoJoystick(JoyX& joyx)
                         {
                             if (joyx.XInputPowerOffController != nullptr)
                                 joyx.XInputPowerOffController(j);
-                        }
-                        break;
-
-                    case JMBT_BUTTON:
-                        if (joyx.bEnabled && IsOnButtonDown(joyState, joyx.joyState[j], mask))
-                        {
-                            switch (joyx.joyLast)
-                            {
-                            case JML_MOUSE: SendKey(VK_LBUTTON, true, joyx.keyDown); break;
-                            case JML_KEYBOARD: SendKey(VK_RETURN, true, joyx.keyDown); break;
-                            }
-                        }
-
-                        if (IsOnButtonUp(joyState, joyx.joyState[j], mask))
-                        {
-                            switch (joyx.joyLast)
-                            {
-                            case JML_MOUSE: SendKey(VK_LBUTTON, false, joyx.keyDown); break;
-                            case JML_KEYBOARD: SendKey(VK_RETURN, false, joyx.keyDown); break;
-                            }
                         }
                         break;
                     }
@@ -576,6 +575,7 @@ WORD GetKey(LPCWSTR start, LPCWSTR end)
     else if (is(start, end, TEXT("MEDIA_PREV_TRACK")))  return VK_MEDIA_PREV_TRACK;
     else if (is(start, end, TEXT("MEDIA_STOP")))        return VK_MEDIA_STOP;
     else if (is(start, end, TEXT("MEDIA_PLAY_PAUSE")))  return VK_MEDIA_PLAY_PAUSE;
+    else if (is(start, end, TEXT("BUTTON")))  return VK_BUTTON;
     // TODO add VK_BROWSER_*, VK_VOLUME_*, VK_MEDIA_*
     else return 0;
 }
@@ -617,6 +617,7 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
         TCHAR strTemp[1024] = L"";
         if (RegGetString(hKey, L"Base", strTemp, ARRAYSIZE(strTemp), _T("")))
         {
+            DebugOut(L"   Base: %s\n", strTemp);
             LoadFromRegistry(hParent, strTemp, joyMapping);
         }
 
@@ -627,14 +628,24 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
         for (int b = 0; b < XINPUT_MAX_BUTTONS; ++b)
         {
             LPCWSTR n = GetButtonName(1 << b);
-            JoyMappingButton& button = joyMapping.joyMappingButton[b];
             if (n != nullptr && RegGetString(hKey, n, strTemp, ARRAYSIZE(strTemp), _T("")))
             {
+                JoyMappingButton& button = joyMapping.joyMappingButton[b];
                 DebugOut(L"   Button: %s %s\n", n, strTemp);
                 if (_tcscmp(strTemp, TEXT("")) == 0)
                 {
                     button.type = JMBT_NONE;
                     button.keys[0] = 0;
+                }
+                else if (_tcscmp(strTemp, TEXT("[TURN_OFF]")) == 0)
+                {
+                    button.type = JMBT_TURN_OFF;
+                    button.keys[0] = 0;
+                }
+                else if (strTemp[0] == L'!')
+                {
+                    button.type = JMBT_ALT;
+                    _tcscpy_s(button.strMapping, strTemp + 1);
                 }
                 else
                 {
@@ -666,6 +677,7 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
             LPCWSTR n = GetThumbName(static_cast<JoyThumb>(t));
             if (RegGetString(hKey, n, strTemp, ARRAYSIZE(strTemp), _T("")))
             {
+                DebugOut(L"   Thumb: %s %s\n", n, strTemp);
                 JoyMappingThumbType& thumb = joyMapping.joyMappingThumb[t];
                 thumb = GetThumbType(strTemp);
                 if (thumb == JMTT_NONE)
@@ -682,7 +694,7 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
 
         joyMapping.joyMappingThumb[JMT_LEFT] = JMTT_MOUSE;
         joyMapping.joyMappingThumb[JMT_RIGHT] = JMTT_SCROLL;
-        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =          { JMBT_BUTTON };
+        joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_A)] =          { JMBT_KEYS, { VK_BUTTON, 0 } };
         joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_B)] =          { JMBT_KEYS, { VK_ESCAPE, 0 } };
         joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_X)] =          { JMBT_KEYS, { VK_RBUTTON, 0 } };
         //joyMapping.joyMappingButton[LBS(XINPUT_GAMEPAD_Y)] =          { JMBT_KEYS, { VK_MEDIA_PLAY_PAUSE, 0 } };
