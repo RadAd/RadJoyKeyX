@@ -547,6 +547,7 @@ WORD GetKey(LPCWSTR start, LPCWSTR end)
     else if (is(start, end, TEXT("RETURN")))    return VK_RETURN;
     else if (is(start, end, TEXT("SHIFT")))     return VK_SHIFT;
     else if (is(start, end, TEXT("CONTROL")))   return VK_CONTROL;
+    else if (is(start, end, TEXT("CTRL")))      return VK_CONTROL;
     else if (is(start, end, TEXT("ALT")))       return VK_MENU;
     else if (is(start, end, TEXT("ESCAPE")))    return VK_ESCAPE;
     else if (is(start, end, TEXT("SPACE")))     return VK_SPACE;
@@ -561,6 +562,18 @@ WORD GetKey(LPCWSTR start, LPCWSTR end)
     else if (is(start, end, TEXT("APPS")))      return VK_APPS;
     else if (is(start, end, TEXT("BACK")))      return VK_BACK;
     else if (is(start, end, TEXT("TAB")))       return VK_TAB;
+    else if (is(start, end, TEXT("F1")))        return VK_F1;
+    else if (is(start, end, TEXT("F2")))        return VK_F2;
+    else if (is(start, end, TEXT("F3")))        return VK_F3;
+    else if (is(start, end, TEXT("F4")))        return VK_F4;
+    else if (is(start, end, TEXT("F5")))        return VK_F5;
+    else if (is(start, end, TEXT("F6")))        return VK_F6;
+    else if (is(start, end, TEXT("F7")))        return VK_F7;
+    else if (is(start, end, TEXT("F8")))        return VK_F8;
+    else if (is(start, end, TEXT("F9")))        return VK_F9;
+    else if (is(start, end, TEXT("F10")))       return VK_F10;
+    else if (is(start, end, TEXT("F11")))       return VK_F11;
+    else if (is(start, end, TEXT("F12")))       return VK_F12;
     else if (is(start, end, TEXT("BROWSER_BACK")))      return VK_BROWSER_BACK;
     else if (is(start, end, TEXT("BROWSER_FORWARD")))   return VK_BROWSER_FORWARD;
     else if (is(start, end, TEXT("BROWSER_REFRESH")))   return VK_BROWSER_REFRESH;
