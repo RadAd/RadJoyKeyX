@@ -189,22 +189,38 @@ inline bool IsOnButtonUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold
 		&& !(state.Gamepad.wButtons & button));
 }
 
-bool DoButtonDown(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button, const WORD* const keys, bool* keyDown, JoyMappingLast joyLast)
+WORD Translate(WORD key, JoyMappingLast& joyLast)
+{
+    switch (key)
+    {
+    case VK_BUTTON:
+        switch (joyLast)
+        {
+        case JML_MOUSE: return VK_LBUTTON;
+        case JML_KEYBOARD: return  VK_RETURN;
+        default: return key;
+        }
+    case VK_LBUTTON:
+    case VK_RBUTTON:
+    case VK_MBUTTON:
+    case VK_XBUTTON1:
+    case VK_XBUTTON2:
+        joyLast = JML_MOUSE;
+        return key;
+    default:
+        joyLast = JML_KEYBOARD;
+        return key;
+    }
+}
+
+bool DoButtonDown(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button, const WORD* const keys, bool* keyDown, JoyMappingLast& joyLast)
 {
 	if (IsOnButtonDown(state, stateold, button))
 	{
 		int k = 0;
 		while (keys[k] != 0)
 		{
-            WORD key = keys[k];
-            if (key == VK_BUTTON)
-            {
-                switch (joyLast)
-                {
-                case JML_MOUSE: key = VK_LBUTTON; break;
-                case JML_KEYBOARD: key = VK_RETURN; break;
-                }
-            }
+            WORD key = Translate(keys[k], joyLast);
             SendKey(key, true, keyDown);
 			++k;
 		}
@@ -220,15 +236,7 @@ bool DoButtonUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD bu
 		int k = 0;
 		while (keys[k] != 0)
 		{
-            WORD key = keys[k];
-            if (key == VK_BUTTON)
-            {
-                switch (joyLast)
-                {
-                case JML_MOUSE: key = VK_LBUTTON; break;
-                case JML_KEYBOARD: key = VK_RETURN; break;
-                }
-            }
+            WORD key = Translate(keys[k], joyLast);
             SendKey(key, false, keyDown);
 			++k;
 		}
@@ -425,8 +433,8 @@ JoystickRet DoJoystick(JoyX& joyx)
 					switch (joyMappingButton.type)
 					{
 					case JMBT_KEYS:
-						if (joyx.bEnabled && DoButtonDown(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown, joyx.joyLast))
-							joyx.joyLast = JML_KEYBOARD;
+                        if (joyx.bEnabled)
+                            DoButtonDown(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown, joyx.joyLast);
 						DoButtonUp(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown, joyx.joyLast);
 						break;
 
