@@ -346,15 +346,12 @@ JoystickRet DoJoystick(JoyX& joyx)
 	{
 		bool bEnabled = !joyx.wndInfoFG.bUsesXinput || joyx.notifyState >= QUNS_ACCEPTS_NOTIFICATIONS || &wndJoyMapping != &joyx.joyMapping[DEFAULT_MAPPING];
 		// TODO Enable if Steam
-		if (bEnabled != joyx.bEnabled)
-		{
-			//MessageBeep(bEnabled ? MB_ICONINFORMATION : MB_ICONWARNING);
-			//DebugOut(_T("Enabled: %s\n"), _(bEnabled));
-			//DebugOut(_T("  Uses X Input: %s\n"), _(joyx.wndInfoFG.bUsesXinput));
-			//DebugOut(_T("  Notify State: %d\n"), joyx.notifyState);
-			joyx.bEnabled = bEnabled;
+        if (bEnabled != joyx.bEnabled)
+        {
+            //MessageBeep(bEnabled ? MB_ICONINFORMATION : MB_ICONWARNING);
+            joyx.bEnabled = bEnabled;
             bWindowChanged = true;
-		}
+        }
 	}
 
 	if (bWindowChanged)
@@ -363,7 +360,9 @@ JoystickRet DoJoystick(JoyX& joyx)
 		exe = exe == nullptr ? joyx.wndInfoFG.spec.strModule : exe + 1;
 		//DebugOut(_T("Module: 0x%x %s\n"), (UINT)hWndFG, exe);
 		DebugOut(_T("%c %s %s \"%s\"\n"), (joyx.bEnabled ? '+' : '-'), nameMapping.c_str(), exe, joyx.wndInfoFG.spec.strWndText);
-	}
+        //DebugOut(_T("  Uses X Input: %s\n"), _(joyx.wndInfoFG.bUsesXinput));
+        //DebugOut(_T("  Notify State: %d\n"), joyx.notifyState);
+    }
 
     for (int j = 0; j < XUSER_MAX_COUNT; ++j)
 	{

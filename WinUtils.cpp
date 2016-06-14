@@ -1,4 +1,5 @@
-#include <stdafx.h>
+#include "stdafx.h"
+#include "WinUtils.h"
 #include <psapi.h>
 #include <Shlwapi.h>
 
@@ -25,12 +26,14 @@ HMODULE FindModule(DWORD pid, LPCWSTR lpModuleSpec)
     {
         HMODULE hModules[1024];
         DWORD dwNeeded = 0;
-        EnumProcessModules(hProcess, hModules, sizeof(hModules), &dwNeeded);
+        EnumProcessModulesEx(hProcess, hModules, sizeof(hModules), &dwNeeded, LIST_MODULES_ALL);
         DWORD count = min(ARRAYSIZE(hModules), dwNeeded / sizeof(HMODULE));
+        //DebugOut(_T("  Module Count: %d\n"), count);
         for (DWORD i = 0; i < count; ++i)
         {
             TCHAR strModule[1024] = { 0 };
             DWORD r = GetModuleFileNameEx(hProcess, hModules[i], strModule, ARRAYSIZE(strModule));
+            //DebugOut(_T("  Module: %s\n"), strModule);
             if (r != 0 && PathMatchSpec(strModule, lpModuleSpec))
             {
                 hFoundModule = hModules[i];
