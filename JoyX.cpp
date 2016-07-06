@@ -14,6 +14,8 @@
 #define DEFAULT_MAPPING L"Default"
 #define ALT_MAPPING L"Alt"
 
+#define XINPUT_GAMEPAD_GUIDE      0x0400
+
 inline POINTFLOAT Normalize(SHORT x, SHORT y, SHORT deadZone)
 {
 	return {
@@ -382,7 +384,7 @@ JoystickRet DoJoystick(JoyX& joyx)
 		}
 
 		XINPUT_STATE joyState = {};
-		r = XInputGetState(j, &joyState);
+		r = joyx.XInputGetState(j, &joyState);
 		if (r == ERROR_SUCCESS)
 		{
             const JoyMapping* joyMappingAlt = nullptr;
@@ -522,6 +524,7 @@ LPCWSTR GetButtonName(int b)
     case XINPUT_GAMEPAD_RIGHT_THUMB: return TEXT("ThumbButtonRight");
     case XINPUT_GAMEPAD_LEFT_SHOULDER: return TEXT("ShoulderLeft");
     case XINPUT_GAMEPAD_RIGHT_SHOULDER: return TEXT("ShoulderRight");
+    case XINPUT_GAMEPAD_GUIDE: return TEXT("Guide");
     case XINPUT_GAMEPAD_A: return TEXT("GamepadA");
     case XINPUT_GAMEPAD_B: return TEXT("GamepadB");
     case XINPUT_GAMEPAD_X: return TEXT("GamepadX");
@@ -777,8 +780,11 @@ void Init(JoyX& joyx)
 
 	joyx.notifyState = QUNS_ACCEPTS_NOTIFICATIONS;
 
-	HMODULE hXInput = FindModule(-1, _T("*\\xinput*.dll"));
-	joyx.XInputPowerOffController = reinterpret_cast<XInputPowerOffController_t>(GetProcAddress(hXInput, (LPCSTR)103));
+    HMODULE hXInput = FindModule(-1, _T("*\\xinput*.dll"));
+    joyx.XInputPowerOffController = reinterpret_cast<XInputPowerOffController_t>(GetProcAddress(hXInput, (LPCSTR) 103));
+    joyx.XInputGetState = reinterpret_cast<XInputGetState_t>(GetProcAddress(hXInput, (LPCSTR) 100));
+    if (joyx.XInputGetState == nullptr)
+        joyx.XInputGetState = XInputGetState;
 }
 
 void AppendBattInfo(TCHAR* s, int length, const XINPUT_BATTERY_INFORMATION* joyBattery)

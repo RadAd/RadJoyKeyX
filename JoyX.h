@@ -11,6 +11,7 @@ enum JoyMappingLast { JML_MOUSE, JML_KEYBOARD };
 enum JoyThumb { JMT_LEFT, JMT_RIGHT, JMT_MAX };
 
 typedef DWORD(WINAPI* XInputPowerOffController_t)(DWORD i);
+typedef DWORD(WINAPI* XInputGetState_t)(DWORD dwUserIndex, XINPUT_STATE* pState);
 
 struct WndSpec
 {
@@ -49,6 +50,7 @@ struct JoyMapping
 struct JoyX
 {
 	XInputPowerOffController_t XInputPowerOffController;
+    XInputGetState_t XInputGetState;
 
 	WndInfo wndInfoFG;
 	QUERY_USER_NOTIFICATION_STATE notifyState;
