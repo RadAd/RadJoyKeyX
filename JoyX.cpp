@@ -686,7 +686,23 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
                             strParseIn = end;
                         }
                         else
-                            *strParseOut = *strParseIn;
+                        {
+                            switch (*strParseIn)
+                            {
+                            case L';': case L':':    *strParseOut = VK_OEM_1; break;
+                            case L'+': case L'=':    *strParseOut = VK_OEM_PLUS; break;
+                            case L',': case L'<':    *strParseOut = VK_OEM_COMMA; break;
+                            case L'-': case L'_':    *strParseOut = VK_OEM_MINUS; break;
+                            case L'.': case L'>':    *strParseOut = VK_OEM_PERIOD; break;
+                            case L'/': case L'?':    *strParseOut = VK_OEM_2; break;
+                            case L'`': case L'~':    *strParseOut = VK_OEM_3; break;
+                            case L'[': case L'{':    *strParseOut = VK_OEM_4; break;
+                            case L'\\': case L'|':   *strParseOut = VK_OEM_5; break;
+                            case L']': case L'}':    *strParseOut = VK_OEM_6; break;
+                            case L'\'': case L'\"':  *strParseOut = VK_OEM_7; break;
+                            default:                 *strParseOut = *strParseIn; break;
+                            }
+                        }
                         ++strParseOut;
                         ++strParseIn;
                     }
