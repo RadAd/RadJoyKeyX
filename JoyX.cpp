@@ -129,28 +129,29 @@ bool SendMouse(LONG dx, LONG dy)
 
 bool SendScroll(LONG dx, LONG dy)
 {
-	if (dx != 0 || dy != 0)
-	{
-		POINT pt;
-		GetCursorPos(&pt);
-		HWND hWnd = WindowFromPoint(pt);
-		if (IsWindow(hWnd))
-		{
-			if (dx != 0)
-			{
-				//SendMessage(hWnd, WM_HSCROLL, dx > 0 ? SB_LINERIGHT : SB_LINELEFT, 0);
-				SendMessage(hWnd, WM_MOUSEHWHEEL, MAKEWPARAM(0, dx), POINTTOPOINTS(pt)); // TODO Check key combos
-			}
-			if (dy != 0)
-			{
-				//SendMessage(hWnd, WM_VSCROLL, dy > 0 ? SB_LINEDOWN : SB_LINEUP, 0);
-				SendMessage(hWnd, WM_MOUSEWHEEL, MAKEWPARAM(0, dy), POINTTOPOINTS(pt)); // TODO Check key combos
-			}
-		}
-		return true;
-	}
-	else
-		return false;
+    bool ret = false;
+
+    if (dx != 0)
+    {
+        //DebugOut(_T("SendMouse x: %d y: %d\n"), dx, dy);
+        INPUT ip = { INPUT_MOUSE };
+        ip.mi.mouseData = dx;
+        ip.mi.dwFlags = MOUSEEVENTF_HWHEEL;
+        SendInput(1, &ip, sizeof(INPUT));
+        ret = true;
+    }
+
+    if (dy != 0)
+    {
+        //DebugOut(_T("SendMouse x: %d y: %d\n"), dx, dy);
+        INPUT ip = { INPUT_MOUSE };
+        ip.mi.mouseData = dy;
+        ip.mi.dwFlags = MOUSEEVENTF_WHEEL;
+        SendInput(1, &ip, sizeof(INPUT));
+        ret = true;
+    }
+
+    return ret;
 }
 
 inline SHORT GetThumbX(const XINPUT_STATE& state, JoyThumb t)
