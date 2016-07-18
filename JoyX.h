@@ -44,6 +44,7 @@ struct JoyMapping
 
     WndSpec spec;
 	JoyMappingButton joyMappingButton[XINPUT_MAX_BUTTONS];
+    JoyMappingButton joyMappingTrigger[JMT_MAX];
     JoyMappingThumbType joyMappingThumb[JMT_MAX];
 };
 

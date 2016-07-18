@@ -83,9 +83,13 @@ bool SendKey(WORD wScan, bool bDown, bool* keyDown)
 		}
 	}
 
+#if 0
 	bool bSend = true;
 	if (!bDown)
 		bSend = keyDown[ip.ki.wVk];
+#else
+    bool bSend = bDown != keyDown[ip.ki.wVk];
+#endif
 	keyDown[ip.ki.wVk] = bDown;
 
 #if 0 //_DEBUG
@@ -180,16 +184,41 @@ inline SHORT GetThumbY(const XINPUT_STATE& state, JoyThumb t)
     }
 }
 
+inline bool GetTriggerDown(const XINPUT_STATE& state, JoyThumb t)
+{
+    switch (t)
+    {
+    case JMT_LEFT:
+        return state.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
+    case JMT_RIGHT:
+        return state.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
+    default:
+        return false;
+    }
+}
+
 inline bool IsOnButtonDown(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button)
 {
-	return (!(stateold.Gamepad.wButtons & button)
-		&& (state.Gamepad.wButtons & button));
+	return !(stateold.Gamepad.wButtons & button)
+		&& (state.Gamepad.wButtons & button);
 }
 
 inline bool IsOnButtonUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button)
 {
-	return ((stateold.Gamepad.wButtons & button)
-		&& !(state.Gamepad.wButtons & button));
+	return (stateold.Gamepad.wButtons & button)
+		&& !(state.Gamepad.wButtons & button);
+}
+
+inline bool IsOnTriggerDown(const XINPUT_STATE& state, const XINPUT_STATE& stateold, JoyThumb t)
+{
+    return !GetTriggerDown(stateold, t)
+        && GetTriggerDown(state, t);
+}
+
+inline bool IsOnTriggerUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold, JoyThumb t)
+{
+    return GetTriggerDown(stateold, t)
+        && !GetTriggerDown(state, t);
 }
 
 WORD Translate(WORD key, JoyMappingLast& joyLast)
@@ -216,9 +245,9 @@ WORD Translate(WORD key, JoyMappingLast& joyLast)
     }
 }
 
-bool DoButtonDown(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button, const WORD* const keys, bool* keyDown, JoyMappingLast& joyLast)
+bool DoButtonDown(bool bIsOnDown, const WORD* const keys, bool* keyDown, JoyMappingLast& joyLast)
 {
-	if (IsOnButtonDown(state, stateold, button))
+	if (bIsOnDown)
 	{
 		int k = 0;
 		while (keys[k] != 0)
@@ -232,9 +261,9 @@ bool DoButtonDown(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD 
 	return false;
 }
 
-bool DoButtonUp(const XINPUT_STATE& state, const XINPUT_STATE& stateold, WORD button, const WORD* const keys, bool* keyDown, JoyMappingLast joyLast)
+bool DoButtonUp(bool bIsOnUp, const WORD* const keys, bool* keyDown, JoyMappingLast joyLast)
 {
-	if (IsOnButtonUp(state, stateold, button))
+	if (bIsOnUp)
 	{
 		int k = 0;
 		while (keys[k] != 0)
@@ -436,8 +465,8 @@ JoystickRet DoJoystick(JoyX& joyx)
 					{
 					case JMBT_KEYS:
                         if (joyx.bEnabled)
-                            DoButtonDown(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown, joyx.joyLast);
-						DoButtonUp(joyState, joyx.joyState[j], mask, joyMappingButton.keys, joyx.keyDown, joyx.joyLast);
+                            DoButtonDown(IsOnButtonDown(joyState, joyx.joyState[j], mask), joyMappingButton.keys, joyx.keyDown, joyx.joyLast);
+						DoButtonUp(IsOnButtonUp(joyState, joyx.joyState[j], mask), joyMappingButton.keys, joyx.keyDown, joyx.joyLast);
 						break;
 
 					case JMBT_TURN_OFF:
@@ -450,7 +479,16 @@ JoystickRet DoJoystick(JoyX& joyx)
                     }
 				}
 
-				// TODO User override joyx.bEnabled
+                for (int i = 0; i < JMT_MAX; ++i)
+                {
+                    JoyThumb t = static_cast<JoyThumb>(i);
+                    const JoyMappingButton& joyMappingButton = joyMapping.joyMappingTrigger[i];
+                    if (joyx.bEnabled)
+                        DoButtonDown(IsOnTriggerDown(joyState, joyx.joyState[j], t), joyMappingButton.keys, joyx.keyDown, joyx.joyLast);
+                    DoButtonUp(IsOnTriggerUp(joyState, joyx.joyState[j], t), joyMappingButton.keys, joyx.keyDown, joyx.joyLast);
+                }
+
+                // TODO User override joyx.bEnabled
             }
 
 			if (joyx.bEnabled)
@@ -544,6 +582,16 @@ LPCWSTR GetThumbName(JoyThumb t)
     }
 }
 
+LPCWSTR GetTriggerName(JoyThumb t)
+{
+    switch (t)
+    {
+    case JMT_LEFT: return TEXT("TriggerLeft");
+    case JMT_RIGHT: return TEXT("TriggerRight");
+    default: return nullptr;
+    }
+}
+
 bool is(LPCWSTR start, LPCWSTR end, LPCWSTR compare)
 {
     size_t l = _tcsclen(compare);
@@ -632,6 +680,63 @@ JoyMapping::JoyMapping()
     }
 }
 
+void ParseButton(JoyMappingButton& button, LPCWSTR strTemp)
+{
+    if (_tcscmp(strTemp, TEXT("")) == 0)
+    {
+        button.type = JMBT_NONE;
+        button.keys[0] = 0;
+    }
+    else if (_tcscmp(strTemp, TEXT("[TURN_OFF]")) == 0)
+    {
+        button.type = JMBT_TURN_OFF;
+        button.keys[0] = 0;
+    }
+    else if (strTemp[0] == L'!')
+    {
+        button.type = JMBT_ALT;
+        _tcscpy_s(button.strMapping, strTemp + 1);
+    }
+    else
+    {
+        button.type = JMBT_KEYS;
+        const TCHAR* strParseIn = strTemp;
+        WORD* strParseOut = button.keys;
+        while (*strParseIn != TEXT('\0'))
+        {
+            const TCHAR* end = nullptr;
+            if (*strParseIn == TEXT('[') && (end = _tcschr(strParseIn + 1, _T(']'))) != nullptr)
+            {
+                *strParseOut = GetKey(strParseIn + 1, end);
+                if (*strParseOut == 0)
+                    DebugOut(L"Error: can't find key %s\n", std::wstring(strParseIn + 1, end).c_str());
+                strParseIn = end;
+            }
+            else
+            {
+                switch (*strParseIn)
+                {
+                case L';': case L':':    *strParseOut = VK_OEM_1; break;
+                case L'+': case L'=':    *strParseOut = VK_OEM_PLUS; break;
+                case L',': case L'<':    *strParseOut = VK_OEM_COMMA; break;
+                case L'-': case L'_':    *strParseOut = VK_OEM_MINUS; break;
+                case L'.': case L'>':    *strParseOut = VK_OEM_PERIOD; break;
+                case L'/': case L'?':    *strParseOut = VK_OEM_2; break;
+                case L'`': case L'~':    *strParseOut = VK_OEM_3; break;
+                case L'[': case L'{':    *strParseOut = VK_OEM_4; break;
+                case L'\\': case L'|':   *strParseOut = VK_OEM_5; break;
+                case L']': case L'}':    *strParseOut = VK_OEM_6; break;
+                case L'\'': case L'\"':  *strParseOut = VK_OEM_7; break;
+                default:                 *strParseOut = *strParseIn; break;
+                }
+            }
+            ++strParseOut;
+            ++strParseIn;
+        }
+        *strParseOut = 0;
+    }
+}
+
 bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
 {
     DebugOut(L"LoadFromRegistry: %s\n", lpSubKey);
@@ -656,59 +761,7 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
             {
                 JoyMappingButton& button = joyMapping.joyMappingButton[b];
                 DebugOut(L"   Button: %s %s\n", n, strTemp);
-                if (_tcscmp(strTemp, TEXT("")) == 0)
-                {
-                    button.type = JMBT_NONE;
-                    button.keys[0] = 0;
-                }
-                else if (_tcscmp(strTemp, TEXT("[TURN_OFF]")) == 0)
-                {
-                    button.type = JMBT_TURN_OFF;
-                    button.keys[0] = 0;
-                }
-                else if (strTemp[0] == L'!')
-                {
-                    button.type = JMBT_ALT;
-                    _tcscpy_s(button.strMapping, strTemp + 1);
-                }
-                else
-                {
-                    button.type = JMBT_KEYS;
-                    const TCHAR* strParseIn = strTemp;
-                    WORD* strParseOut = button.keys;
-                    while (*strParseIn != TEXT('\0'))
-                    {
-                        const TCHAR* end = nullptr;
-                        if (*strParseIn == TEXT('[') && (end = _tcschr(strParseIn + 1, _T(']'))) != nullptr)
-                        {
-                            *strParseOut = GetKey(strParseIn + 1, end);
-                            if (*strParseOut == 0)
-                                DebugOut(L"Error: can't find key %s\n", std::wstring(strParseIn + 1, end).c_str());
-                            strParseIn = end;
-                        }
-                        else
-                        {
-                            switch (*strParseIn)
-                            {
-                            case L';': case L':':    *strParseOut = VK_OEM_1; break;
-                            case L'+': case L'=':    *strParseOut = VK_OEM_PLUS; break;
-                            case L',': case L'<':    *strParseOut = VK_OEM_COMMA; break;
-                            case L'-': case L'_':    *strParseOut = VK_OEM_MINUS; break;
-                            case L'.': case L'>':    *strParseOut = VK_OEM_PERIOD; break;
-                            case L'/': case L'?':    *strParseOut = VK_OEM_2; break;
-                            case L'`': case L'~':    *strParseOut = VK_OEM_3; break;
-                            case L'[': case L'{':    *strParseOut = VK_OEM_4; break;
-                            case L'\\': case L'|':   *strParseOut = VK_OEM_5; break;
-                            case L']': case L'}':    *strParseOut = VK_OEM_6; break;
-                            case L'\'': case L'\"':  *strParseOut = VK_OEM_7; break;
-                            default:                 *strParseOut = *strParseIn; break;
-                            }
-                        }
-                        ++strParseOut;
-                        ++strParseIn;
-                    }
-                    *strParseOut = 0;
-                }
+                ParseButton(button, strTemp);
             }
         }
 
@@ -722,6 +775,17 @@ bool LoadFromRegistry(HKEY hParent, LPCWSTR lpSubKey, JoyMapping& joyMapping)
                 thumb = GetThumbType(strTemp);
                 if (thumb == JMTT_NONE)
                     DebugOut(L"Error: can't find thumb %s\n", strTemp);
+            }
+        }
+
+        for (int t = 0; t < JMT_MAX; ++t)
+        {
+            LPCWSTR n = GetTriggerName(static_cast<JoyThumb>(t));
+            if (RegGetString(hKey, n, strTemp, ARRAYSIZE(strTemp), _T("")))
+            {
+                JoyMappingButton& button = joyMapping.joyMappingTrigger[t];
+                DebugOut(L"   Trigger: %s %s\n", n, strTemp);
+                ParseButton(button, strTemp);
             }
         }
 
