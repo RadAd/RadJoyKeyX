@@ -1,4 +1,5 @@
-![Icon](RadJoyKeyX.ico) RadJoyKeyX
+<!-- ![Icon](RadJoyKeyX.ico) RadJoyKeyX -->
+<img src="RadJoyKeyX.ico" width=32/> RadJoyKeyX
 ==========
 
 Joystick to mouse/keyboard for XInput joysticks.
